@@ -1,0 +1,96 @@
+import clsx, { type ClassValue } from "clsx";
+
+export const cn = (...parts: ClassValue[]) => clsx(parts);
+
+/** Loose comparison used for free-text answers: case, accent and punctuation insensitive. */
+export function normalizeAnswer(input: string): string {
+  return input
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9\s]/g, "")
+    .replace(/\s+/g, " ");
+}
+
+/** Black or white, whichever stays legible on the given hex background. */
+export function readableOn(hex: string): string {
+  const h = hex.replace("#", "");
+  const full =
+    h.length === 3
+      ? h
+          .split("")
+          .map((c) => c + c)
+          .join("")
+      : h;
+  const r = parseInt(full.slice(0, 2), 16) || 0;
+  const g = parseInt(full.slice(2, 4), 16) || 0;
+  const b = parseInt(full.slice(4, 6), 16) || 0;
+  // Relative luminance
+  const l = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return l > 0.6 ? "#0b0820" : "#ffffff";
+}
+
+export function withAlpha(hex: string, alpha: number): string {
+  const h = hex.replace("#", "");
+  const full =
+    h.length === 3
+      ? h
+          .split("")
+          .map((c) => c + c)
+          .join("")
+      : h;
+  const r = parseInt(full.slice(0, 2), 16) || 0;
+  const g = parseInt(full.slice(2, 4), 16) || 0;
+  const b = parseInt(full.slice(4, 6), 16) || 0;
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+export function initials(name: string): string {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0]!.toUpperCase())
+    .join("");
+}
+
+/** Default team colours offered in the builder. */
+export const TEAM_COLORS = [
+  "#ff4d8d",
+  "#7c5cff",
+  "#4dd0ff",
+  "#3ddc97",
+  "#ffc94d",
+  "#ff8a4d",
+  "#ff5470",
+  "#a0ff4d",
+  "#4d6bff",
+  "#ff4de0",
+];
+
+export const DIFFICULTY: Record<number, { label: string; color: string }> = {
+  1: { label: "Easy", color: "#3ddc97" },
+  2: { label: "Normal", color: "#ffc94d" },
+  3: { label: "Hard", color: "#ff5470" },
+};
+
+export const ANSWER_KIND_LABEL: Record<string, string> = {
+  text_input: "Type the answer",
+  text_choice: "4 text choices",
+  image_choice: "4 image choices",
+  image_text_choice: "4 images with titles",
+};
+
+/** 1234 -> "1.2s" */
+export const seconds = (ms: number) => `${(ms / 1000).toFixed(1)}s`;
+
+export const clamp = (n: number, min: number, max: number) =>
+  Math.min(max, Math.max(min, n));
+
+/** Ordinal suffix: 1 -> 1st */
+export function ordinal(n: number): string {
+  const s = ["th", "st", "nd", "rd"];
+  const v = n % 100;
+  return n + (s[(v - 20) % 10] ?? s[v] ?? s[0]);
+}

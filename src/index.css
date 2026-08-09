@@ -1,0 +1,189 @@
+@import "tailwindcss";
+
+/* ==========================================================================
+   Design tokens (Tailwind v4 CSS-first config).
+   Every custom colour/font/animation the app uses is declared here.
+   Use them as normal utilities: bg-ink, text-neon, font-display, animate-float
+   ========================================================================== */
+@theme {
+  /* Surfaces — deep festive night */
+  --color-ink: #08061a;
+  --color-ink-2: #0f0b2e;
+  --color-ink-3: #1a1145;
+  --color-veil: #2a1d63;
+
+  /* Accents */
+  --color-neon: #7c5cff; /* primary violet */
+  --color-neon-2: #b388ff;
+  --color-punch: #ff4d8d; /* hot pink */
+  --color-sun: #ffc94d; /* gold */
+  --color-mint: #3ddc97; /* correct */
+  --color-siren: #ff5470; /* wrong */
+  --color-sky: #4dd0ff;
+
+  --font-display: "Outfit", "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+
+  --animate-float: float 7s ease-in-out infinite;
+  --animate-pulse-ring: pulse-ring 2.2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  --animate-shimmer: shimmer 2.4s linear infinite;
+  --animate-gradient: gradient-pan 14s ease infinite;
+  --animate-pop-in: pop-in 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  --animate-marquee: marquee 22s linear infinite;
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(0, -18px, 0);
+  }
+}
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.85);
+    opacity: 0.75;
+  }
+  70% {
+    transform: scale(1.35);
+    opacity: 0;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+@keyframes gradient-pan {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+@keyframes pop-in {
+  from {
+    transform: scale(0.6) translateY(12px);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+}
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+  body {
+    @apply bg-ink text-white font-sans antialiased;
+    overscroll-behavior-y: none;
+  }
+  h1,
+  h2,
+  h3 {
+    @apply font-display tracking-tight;
+  }
+  ::selection {
+    @apply bg-neon text-white;
+  }
+}
+
+@layer components {
+  /* Glass panel — the workhorse surface */
+  .glass {
+    @apply rounded-3xl border border-white/10 bg-white/[0.04] backdrop-blur-xl;
+    box-shadow:
+      0 1px 0 0 rgb(255 255 255 / 0.08) inset,
+      0 30px 80px -30px rgb(0 0 0 / 0.8);
+  }
+  .glass-soft {
+    @apply rounded-2xl border border-white/10 bg-white/[0.03];
+  }
+
+  /* Buttons. Each variant carries the base styles itself, so `btn-primary`
+     works standalone as well as alongside `btn`. (Tailwind v4 cannot @apply a
+     custom component class, hence the shared selector list rather than
+     `.btn-primary { @apply btn }`.) */
+  .btn,
+  .btn-primary,
+  .btn-ghost,
+  .btn-sun {
+    @apply inline-flex cursor-pointer items-center justify-center gap-2 rounded-full
+      px-5 py-3 font-display text-sm font-semibold tracking-wide transition
+      active:scale-[0.97] disabled:pointer-events-none disabled:opacity-40;
+  }
+  .btn-primary {
+    @apply text-white;
+    background-image: linear-gradient(100deg, var(--color-neon), var(--color-punch));
+    box-shadow: 0 10px 30px -10px var(--color-neon);
+  }
+  .btn-primary:hover {
+    filter: brightness(1.12);
+  }
+  .btn-ghost {
+    @apply border border-white/15 bg-white/5 text-white/90 hover:bg-white/10;
+  }
+  .btn-sun {
+    @apply text-ink;
+    background-image: linear-gradient(100deg, var(--color-sun), #ff9d4d);
+    box-shadow: 0 10px 30px -10px var(--color-sun);
+  }
+
+  /* Inputs */
+  .field {
+    @apply w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-white
+      placeholder-white/35 outline-none transition
+      focus:border-neon focus:ring-2 focus:ring-neon/40;
+  }
+  .label {
+    @apply mb-1.5 block font-display text-[11px] font-semibold uppercase tracking-[0.14em] text-white/50;
+  }
+
+  /* Gradient text */
+  .grad-text {
+    background-image: linear-gradient(
+      100deg,
+      var(--color-sun),
+      var(--color-punch) 45%,
+      var(--color-neon-2)
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+}
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+  .pb-safe {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+  .text-balance {
+    text-wrap: balance;
+  }
+}
