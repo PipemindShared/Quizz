@@ -64,7 +64,16 @@ export default defineSchema({
     /** last quiz of the tournament — playing it ends the tournament */
     isFinal: v.boolean(),
     order: v.number(),
-  }).index("by_tournament", ["tournamentId"]),
+    /**
+     * Long opaque secret — holding it grants full edit access to this quiz.
+     * Always set for quizzes created after this field was added; optional so
+     * quizzes that already existed in the database don't fail schema
+     * validation (they get a token lazily the first time one is requested).
+     */
+    editToken: v.optional(v.string()),
+  })
+    .index("by_tournament", ["tournamentId"])
+    .index("by_editToken", ["editToken"]),
 
   questions: defineTable({
     quizId: v.id("quizzes"),

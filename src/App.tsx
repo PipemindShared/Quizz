@@ -4,6 +4,7 @@ import AdminGate from "./admin/AdminGate";
 import AdminHome from "./admin/AdminHome";
 import TournamentBuilder from "./admin/TournamentBuilder";
 import QuizBuilder from "./admin/QuizBuilder";
+import QuizEditGate from "./admin/QuizEditGate";
 import HostScreen from "./host/HostScreen";
 import PlayerApp from "./player/PlayerApp";
 
@@ -37,6 +38,9 @@ export default function App() {
           </AdminGate>
         }
       />
+
+      {/* Delegated quiz editing — reached by secret edit link, no passphrase needed */}
+      <Route path="/quiz/:quizId/edit/:token" element={<QuizEditGate />} />
 
       {/* Host big screen */}
       <Route path="/host/:gameId" element={<HostScreen />} />

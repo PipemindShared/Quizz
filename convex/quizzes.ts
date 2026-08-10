@@ -77,12 +77,14 @@ export const create = mutation({
       .query("quizzes")
       .withIndex("by_tournament", (q) => q.eq("tournamentId", args.tournamentId))
       .collect();
+    const editToken = await lib.generateUniqueEditToken(ctx);
     const quizId = await ctx.db.insert("quizzes", {
       tournamentId: args.tournamentId,
       name,
       description: args.description,
       isFinal: args.isFinal ?? false,
       order: existing.length,
+      editToken,
     });
     if (args.isFinal) await clearOtherFinals(ctx, args.tournamentId, quizId);
     return quizId;
@@ -111,6 +113,33 @@ export const update = mutation({
     await ctx.db.patch(args.quizId, patch);
     if (args.isFinal) await clearOtherFinals(ctx, quiz.tournamentId, args.quizId);
     return null;
+  },
+});
+
+/** Invalidates the current edit link (e.g. if it leaked) and issues a fresh one. */
+export const regenerateEditToken = mutation({
+  args: { quizId: v.id("quizzes") },
+  returns: v.string(),
+  handler: async (ctx, args) => {
+    const quiz = await ctx.db.get(args.quizId);
+    if (!quiz) throw new ConvexError("Quiz not found");
+    const editToken = await lib.generateUniqueEditToken(ctx);
+    await ctx.db.patch(args.quizId, { editToken });
+    return editToken;
+  },
+});
+
+/** Returns the quiz's edit token, minting one lazily if it predates this feature. */
+export const ensureEditToken = mutation({
+  args: { quizId: v.id("quizzes") },
+  returns: v.string(),
+  handler: async (ctx, args) => {
+    const quiz = await ctx.db.get(args.quizId);
+    if (!quiz) throw new ConvexError("Quiz not found");
+    if (quiz.editToken) return quiz.editToken;
+    const editToken = await lib.generateUniqueEditToken(ctx);
+    await ctx.db.patch(args.quizId, { editToken });
+    return editToken;
   },
 });
 

@@ -3,12 +3,15 @@ import { Link, useParams } from "react-router-dom";
 import { useMutation, useQuery } from "convex/react";
 import { ConvexError } from "convex/values";
 import {
+  Check,
   ChevronDown,
   ChevronUp,
   Copy,
+  Link2,
   LoaderCircle,
   Pencil,
   Plus,
+  RefreshCw,
   Trash2,
   X,
 } from "lucide-react";
@@ -127,6 +130,79 @@ function InlineText({
 }
 
 const fmt = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+
+function EditLinkControls({
+  quizId,
+  editToken,
+}: {
+  quizId: Id<"quizzes">;
+  editToken?: string;
+}) {
+  const ensureEditToken = useMutation(api.quizzes.ensureEditToken);
+  const regenerate = useMutation(api.quizzes.regenerateEditToken);
+  const [copied, setCopied] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+
+  async function copy() {
+    setBusy(true);
+    try {
+      const token = editToken ?? (await ensureEditToken({ quizId }));
+      const url = `${window.location.origin}/quiz/${quizId}/edit/${token}`;
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function doRegenerate() {
+    setConfirming(false);
+    setBusy(true);
+    try {
+      await regenerate({ quizId });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <button
+        className="btn-ghost text-xs"
+        onClick={copy}
+        disabled={busy}
+        title="Anyone with this link can edit this quiz, without the admin passphrase"
+      >
+        {busy ? (
+          <LoaderCircle className="h-4 w-4 animate-spin" />
+        ) : copied ? (
+          <Check className="h-4 w-4" />
+        ) : (
+          <Link2 className="h-4 w-4" />
+        )}
+        {copied ? "Copied" : "Copy edit link"}
+      </button>
+      {confirming ? (
+        <span className="inline-flex items-center gap-2 text-xs text-white/60">
+          Old link stops working.
+          <button className="btn-ghost px-3 py-1.5 text-xs text-siren" onClick={doRegenerate}>
+            Confirm
+          </button>
+          <button className="btn-ghost px-3 py-1.5 text-xs" onClick={() => setConfirming(false)}>
+            Cancel
+          </button>
+        </span>
+      ) : (
+        <button className="btn-ghost text-xs" onClick={() => setConfirming(true)} disabled={busy}>
+          {busy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+          New link
+        </button>
+      )}
+    </div>
+  );
+}
 
 export default function QuizBuilder() {
   const { quizId } = useParams() as { quizId: Id<"quizzes"> };
@@ -274,6 +350,9 @@ export default function QuizBuilder() {
             <span className="text-sm text-white/50">
               Total points: {totalPoints} · Est. runtime: {fmt(runtimeSec)}
             </span>
+          </div>
+          <div className="mt-4 border-t border-white/10 pt-4">
+            <EditLinkControls quizId={quizId} editToken={quiz.editToken} />
           </div>
         </div>
 

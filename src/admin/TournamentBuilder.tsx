@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useQuery, useMutation } from "convex/react";
 import { ConvexError } from "convex/values";
-import { LoaderCircle, Plus, Trash2, X } from "lucide-react";
+import { Check, Link2, LoaderCircle, Plus, Trash2, X } from "lucide-react";
 import { api } from "../../convex/_generated/api";
 import type { Doc, Id } from "../../convex/_generated/dataModel";
 import Backdrop from "../components/Backdrop";
@@ -57,6 +57,49 @@ function ConfirmButton({
         No
       </button>
     </span>
+  );
+}
+
+function CopyEditLinkButton({
+  quizId,
+  editToken,
+}: {
+  quizId: Id<"quizzes">;
+  editToken?: string;
+}) {
+  const ensureEditToken = useMutation(api.quizzes.ensureEditToken);
+  const [copied, setCopied] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  async function copy() {
+    setBusy(true);
+    try {
+      const token = editToken ?? (await ensureEditToken({ quizId }));
+      const url = `${window.location.origin}/quiz/${quizId}/edit/${token}`;
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <button
+      className="btn-ghost text-xs"
+      onClick={copy}
+      disabled={busy}
+      title="Copy a link that lets someone edit just this quiz"
+    >
+      {busy ? (
+        <LoaderCircle className="h-4 w-4 animate-spin" />
+      ) : copied ? (
+        <Check className="h-4 w-4" />
+      ) : (
+        <Link2 className="h-4 w-4" />
+      )}
+      {copied ? "Copied" : "Edit link"}
+    </button>
   );
 }
 
@@ -559,6 +602,7 @@ export default function TournamentBuilder() {
                     <Link to={`/admin/quiz/${q._id}`} className="btn-ghost">
                       Edit
                     </Link>
+                    <CopyEditLinkButton quizId={q._id} editToken={q.editToken} />
 
                     {q.lastGameId && (
                       <Link to={`/host/${q.lastGameId}`} className="btn-ghost text-xs">

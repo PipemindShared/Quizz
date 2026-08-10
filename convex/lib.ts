@@ -40,6 +40,34 @@ export async function generateUniqueGameCode(ctx: MutationCtx): Promise<string> 
 }
 
 /* ------------------------------------------------------------------ */
+/* Edit tokens                                                          */
+/* ------------------------------------------------------------------ */
+
+const TOKEN_ALPHABET =
+  "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+
+function makeToken(length = 28): string {
+  let out = "";
+  for (let i = 0; i < length; i++) {
+    out += TOKEN_ALPHABET[Math.floor(Math.random() * TOKEN_ALPHABET.length)];
+  }
+  return out;
+}
+
+/** Long opaque secret used as a quiz's edit-link token. Collisions are practically impossible (62^28 space), but we still guard against them. */
+export async function generateUniqueEditToken(ctx: MutationCtx): Promise<string> {
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const token = makeToken();
+    const clash = await ctx.db
+      .query("quizzes")
+      .withIndex("by_editToken", (q) => q.eq("editToken", token))
+      .first();
+    if (!clash) return token;
+  }
+  throw new ConvexError("Could not generate an edit link — please try again");
+}
+
+/* ------------------------------------------------------------------ */
 /* Grading                                                              */
 /* ------------------------------------------------------------------ */
 

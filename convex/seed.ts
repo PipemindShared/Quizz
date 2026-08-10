@@ -1,5 +1,6 @@
 import { mutation } from "./_generated/server";
 import { v } from "convex/values";
+import * as lib from "./lib";
 
 /**
  * Demo data for kicking the tyres without clicking through the builder.
@@ -34,6 +35,7 @@ export const demo = mutation({
       description: "A gentle start. Mostly.",
       isFinal: false,
       order: 0,
+      editToken: await lib.generateUniqueEditToken(ctx),
     });
 
     const weekOneQuestions = [
@@ -84,6 +86,7 @@ export const demo = mutation({
       description: "Winner takes the trophy. Playing this ends the tournament.",
       isFinal: true,
       order: 1,
+      editToken: await lib.generateUniqueEditToken(ctx),
     });
 
     const finalQuestions = [
