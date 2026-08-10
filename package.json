@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "convex deploy --cmd 'npm run build:client'",
+    "build:client": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
     "typecheck": "tsc -b"
