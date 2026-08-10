@@ -3,7 +3,7 @@ import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { Trophy, Crown, Medal, Star } from "lucide-react";
 import type { HostState } from "./types";
 import TeamBadge from "../components/TeamBadge";
-import { cn, ordinal } from "../lib/utils";
+import { cn, formatScore, ordinal } from "../lib/utils";
 import { sideCannons, rain } from "../lib/celebrate";
 
 export type HostLeaderboardProps = {
@@ -29,7 +29,7 @@ function RoundScoreChip({ roundScore }: { roundScore: number }) {
       )}
     >
       {sign}
-      {roundScore.toFixed(2)}
+      {formatScore(roundScore)}
     </span>
   );
 }
@@ -113,7 +113,7 @@ function StandingRow({
           topThree ? "text-3xl sm:text-4xl" : "text-2xl sm:text-3xl",
         )}
       >
-        {standing.total.toFixed(2)}
+        {formatScore(standing.total)}
       </div>
     </motion.div>
   );
@@ -170,7 +170,7 @@ function ChampionCard({
         <div className="flex items-center gap-3">
           <Trophy className="h-8 w-8 text-sun" strokeWidth={2} />
           <div className="font-display text-5xl font-black tabular-nums text-white sm:text-7xl">
-            {champion.total.toFixed(2)}
+            {formatScore(champion.total)}
           </div>
           <Trophy className="h-8 w-8 text-sun" strokeWidth={2} />
         </div>

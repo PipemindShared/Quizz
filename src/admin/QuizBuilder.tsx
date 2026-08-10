@@ -19,7 +19,7 @@ import {
 import { api } from "../../convex/_generated/api";
 import type { Doc, Id } from "../../convex/_generated/dataModel";
 import Backdrop from "../components/Backdrop";
-import { ANSWER_KIND_LABEL, DIFFICULTY } from "../lib/utils";
+import { ANSWER_KIND_LABEL, DIFFICULTY, formatScore, maxQuestionPoints } from "../lib/utils";
 import QuestionEditor from "./QuestionEditor";
 
 function errMsg(e: unknown): string {
@@ -275,7 +275,8 @@ export default function QuizBuilder() {
     );
   }
 
-  const totalPoints = questions.reduce((s, q) => s + q.points, 0);
+  // Max achievable: each question's difficulty at full speed.
+  const totalPoints = questions.reduce((s, q) => s + maxQuestionPoints(q.points), 0);
   const runtimeSec =
     questions.reduce((s, q) => s + q.timeLimit, 0) + questions.length * 8;
 
@@ -371,7 +372,7 @@ export default function QuizBuilder() {
               <span className="glass-soft px-2.5 py-1 text-xs text-sun">Final</span>
             )}
             <span className="text-sm text-white/50">
-              Total points: {totalPoints} · Est. runtime: {fmt(runtimeSec)}
+              Max points: {formatScore(totalPoints)} · Est. runtime: {fmt(runtimeSec)}
             </span>
           </div>
           <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-white/10 pt-4">

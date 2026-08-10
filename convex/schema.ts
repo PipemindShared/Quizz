@@ -124,6 +124,14 @@ export default defineSchema({
     teamId: v.id("teams"),
     name: v.string(),
     joinedAt: v.number(),
+    /**
+     * game.currentIndex at the moment this player joined; -1 for anyone who
+     * joined from the lobby. A player only counts towards questions that
+     * opened after they arrived (index > joinedAtIndex), so joining late never
+     * drags down the teammates who were already playing. Optional because
+     * players who joined before this field existed are treated as -1.
+     */
+    joinedAtIndex: v.optional(v.number()),
   })
     .index("by_game", ["gameId"])
     .index("by_game_team", ["gameId", "teamId"]),

@@ -6,7 +6,14 @@ import { api } from "../../convex/_generated/api";
 import type { Doc, Id } from "../../convex/_generated/dataModel";
 import Backdrop from "../components/Backdrop";
 import StorageImage from "../components/StorageImage";
-import { cn, DIFFICULTY, normalizeAnswer } from "../lib/utils";
+import {
+  cn,
+  DIFFICULTY,
+  formatScore,
+  maxQuestionPoints,
+  normalizeAnswer,
+  pointsForCorrect,
+} from "../lib/utils";
 
 type Question = Doc<"questions">;
 
@@ -38,12 +45,15 @@ export default function QuizTest() {
   const [submittedText, setSubmittedText] = useState("");
   const [score, setScore] = useState(0);
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
+  const [openedAt, setOpenedAt] = useState<number>(() => Date.now());
+  const [earned, setEarned] = useState<number | null>(null);
 
   const question = questions?.[index];
 
   useEffect(() => {
     if (!question || answered) return;
     setSecondsLeft(question.timeLimit);
+    setOpenedAt(Date.now());
     const t = setInterval(() => {
       setSecondsLeft((s) => {
         if (s === null) return null;
@@ -66,7 +76,15 @@ export default function QuizTest() {
     setCorrect(isCorrect);
     if (args.choiceIndex !== undefined) setChoiceIndex(args.choiceIndex);
     if (args.text !== undefined) setSubmittedText(args.text);
-    if (isCorrect) setScore((s) => s + question.points);
+    const elapsedMs = Math.min(
+      Math.max(Date.now() - openedAt, 0),
+      question.timeLimit * 1000,
+    );
+    const got = isCorrect
+      ? pointsForCorrect(question.points, elapsedMs, question.timeLimit)
+      : 0;
+    setEarned(got);
+    if (got) setScore((s) => s + got);
   }
 
   function next() {
@@ -75,6 +93,7 @@ export default function QuizTest() {
     setChoiceIndex(null);
     setTextValue("");
     setSubmittedText("");
+    setEarned(null);
     setIndex((i) => i + 1);
   }
 
@@ -85,6 +104,7 @@ export default function QuizTest() {
     setChoiceIndex(null);
     setTextValue("");
     setSubmittedText("");
+    setEarned(null);
     setScore(0);
   }
 
@@ -115,7 +135,7 @@ export default function QuizTest() {
     );
   }
 
-  const totalPoints = questions.reduce((s, q) => s + q.points, 0);
+  const totalPoints = questions.reduce((s, q) => s + maxQuestionPoints(q.points), 0);
   const finished = index >= questions.length;
 
   return (
@@ -141,7 +161,7 @@ export default function QuizTest() {
           <div className="glass flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center">
             <p className="font-display text-2xl font-bold text-white">Done</p>
             <p className="text-white/70">
-              {score} / {totalPoints} points
+              {formatScore(score)} / {formatScore(totalPoints)} points
             </p>
             <button className="btn-primary mt-2" onClick={restart}>
               Try again
@@ -192,7 +212,13 @@ export default function QuizTest() {
             </div>
 
             {answered ? (
-              <ResultPanel question={question} correct={correct} choiceIndex={choiceIndex} text={submittedText} />
+              <ResultPanel
+                question={question}
+                correct={correct}
+                choiceIndex={choiceIndex}
+                text={submittedText}
+                earned={earned}
+              />
             ) : (
               <AnswerInput
                 question={question}
@@ -225,11 +251,13 @@ function ResultPanel({
   correct,
   choiceIndex,
   text,
+  earned,
 }: {
   question: Question;
   correct: boolean;
   choiceIndex: number | null;
   text: string;
+  earned: number | null;
 }) {
   const correctChoiceText =
     question.answerKind !== "text_input" && question.correctChoice !== undefined
@@ -255,6 +283,11 @@ function ResultPanel({
       <p className="font-display text-lg font-bold text-white">
         {correct ? "Correct!" : "Not quite"}
       </p>
+      {correct && earned !== null && (
+        <p className="font-display text-sm font-bold text-mint">
+          +{formatScore(earned)} of {formatScore(maxQuestionPoints(question.points))}
+        </p>
+      )}
       {!correct && (
         <p className="max-w-xs text-balance text-sm text-white/70">
           Correct answer: {question.answerKind === "text_input" ? question.correctText : correctChoiceText}

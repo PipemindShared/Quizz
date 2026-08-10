@@ -9,6 +9,7 @@ import type { PlayerSession } from "../lib/session";
 import { clearSession, loadSession, saveSession } from "../lib/session";
 import type { PlayTeam } from "./types";
 import Backdrop from "../components/Backdrop";
+import PlayerWaiting from "./PlayerWaiting";
 import JoinTeam from "./JoinTeam";
 import JoinName from "./JoinName";
 import PlayerLobby from "./PlayerLobby";
@@ -136,6 +137,11 @@ export default function PlayerApp() {
           }}
         />
       );
+    } else if (state.sittingOut) {
+      // Joined after this question opened, so they wait it out rather than
+      // answering with less time than everyone else.
+      phaseKey = "sitting-out";
+      content = <PlayerWaiting teamColor={me.teamColor} />;
     } else if (status === "question") {
       phaseKey = `question:${state.question?._id ?? ""}`;
       if (state.question) {

@@ -90,8 +90,16 @@ export const getPlayState = query({
       answeredCount = currentAnswers.length;
     }
 
+    // A player who joined mid-question sits that one out entirely — including
+    // its reveal, which would otherwise show them an answer to a question they
+    // never saw.
+    const sittingOut =
+      !!me && game.currentIndex >= 0 && !lib.isEligibleForQuestion(me, game.currentIndex);
+
     const showQuestion =
-      currentQuestion && (game.status === "question" || game.status === "reveal");
+      currentQuestion &&
+      !sittingOut &&
+      (game.status === "question" || game.status === "reveal");
     const question = showQuestion
       ? {
           _id: currentQuestion._id,
@@ -204,6 +212,8 @@ export const getPlayState = query({
         : null,
       playerCount: players.length,
       answeredCount,
+      /** True while this player waits out a question that opened before they joined. */
+      sittingOut,
       question,
       myAnswer,
       reveal,
@@ -246,6 +256,9 @@ export const join = mutation({
       teamId: args.teamId,
       name,
       joinedAt: Date.now(),
+      // Stamps where in the quiz they arrived, so scoring can skip the
+      // questions they were never shown. -1 while still in the lobby.
+      joinedAtIndex: game.currentIndex,
     });
     return { playerId };
   },
@@ -277,6 +290,9 @@ export const submitAnswer = mutation({
     if (game.questionEndsAt !== undefined && Date.now() > game.questionEndsAt + LATE_GRACE_MS) {
       throw new ConvexError("Time's up");
     }
+    if (!lib.isEligibleForQuestion(player, game.currentIndex)) {
+      throw new ConvexError("You joined during this question — you're in from the next one");
+    }
 
     const already = await ctx.db
       .query("answers")
@@ -288,10 +304,11 @@ export const submitAnswer = mutation({
       game.questionStartedAt !== undefined ? Date.now() - game.questionStartedAt : 0;
     const elapsedMs = Math.min(Math.max(elapsedRaw, 0), question.timeLimit * 1000);
 
-    const { correct, points } = lib.gradeAnswer(question, {
-      choiceIndex: args.choiceIndex,
-      text: args.text,
-    });
+    const { correct, points } = lib.gradeAnswer(
+      question,
+      { choiceIndex: args.choiceIndex, text: args.text },
+      elapsedMs,
+    );
 
     await ctx.db.insert("answers", {
       gameId: game._id,

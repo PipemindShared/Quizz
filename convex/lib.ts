@@ -86,9 +86,48 @@ export function normalizeAnswer(input: string, caseSensitive = false): string {
     .replace(/\s+/g, " ");
 }
 
+/**
+ * Points are scaled by 100, so a speed bonus stays a whole number: a question's
+ * difficulty (1-3) becomes 100/200/300 at full speed.
+ */
+export const POINT_SCALE = 100;
+
+/**
+ * Answers within this window score full speed credit. Players need a moment to
+ * read the question at all, and it stops phone/network latency from deciding
+ * the round.
+ */
+export const SPEED_GRACE_MS = 1500;
+
+/**
+ * 1 for an instant answer, falling linearly to 0 as the timer runs out. The
+ * grace window is subtracted from both sides so the ramp starts once reading
+ * time is over.
+ */
+export function speedFactor(elapsedMs: number, timeLimitSec: number): number {
+  const past = elapsedMs - SPEED_GRACE_MS;
+  if (past <= 0) return 1;
+  const window = timeLimitSec * 1000 - SPEED_GRACE_MS;
+  if (window <= 0) return 1;
+  return Math.max(0, Math.min(1, 1 - past / window));
+}
+
+/**
+ * Half the points are for being right, half for being quick — so a correct
+ * answer is always worth at least 50% of the question's value.
+ */
+export function pointsForCorrectAnswer(
+  question: Doc<"questions">,
+  elapsedMs: number,
+): number {
+  const max = question.points * POINT_SCALE;
+  return Math.round(max * (0.5 + 0.5 * speedFactor(elapsedMs, question.timeLimit)));
+}
+
 export function gradeAnswer(
   question: Doc<"questions">,
   submission: { choiceIndex?: number; text?: string },
+  elapsedMs = 0,
 ): { correct: boolean; points: number } {
   let correct: boolean;
   if (question.answerKind === "text_input") {
@@ -103,7 +142,16 @@ export function gradeAnswer(
       submission.choiceIndex !== undefined &&
       submission.choiceIndex === question.correctChoice;
   }
-  return { correct, points: correct ? question.points : 0 };
+  return { correct, points: correct ? pointsForCorrectAnswer(question, elapsedMs) : 0 };
+}
+
+/**
+ * Whether a player counts towards the question at `index`. Players who joined
+ * mid-game sit out the question that was already open when they arrived, so
+ * everyone answering a given question had the same time to do it.
+ */
+export function isEligibleForQuestion(player: Doc<"players">, index: number): boolean {
+  return (player.joinedAtIndex ?? -1) < index;
 }
 
 /* ------------------------------------------------------------------ */
@@ -126,9 +174,16 @@ export async function loadOrderedQuestions(
 /* ------------------------------------------------------------------ */
 
 /**
- * Team score for one played quiz = average of its players' summed points.
- * Players who joined but never answered still count (as 0) in the
- * denominator. A team with no players scores 0. Rounded to 2 decimals.
+ * Team score for one played quiz, computed question by question: each question
+ * contributes the average score of the team members who were present when it
+ * opened. Summing those gives a total on the same scale as the quiz maximum,
+ * whatever the team's size.
+ *
+ * Averaging per question rather than over whole-game totals is what makes
+ * joining late fair: a player who missed the first two questions is simply
+ * absent from those two denominators, instead of diluting the whole team with
+ * unavoidable zeroes. A question no team member was present for contributes 0 —
+ * those points genuinely weren't earned.
  */
 export async function computeTeamScoreForGame(
   ctx: QueryCtx | MutationCtx,
@@ -145,19 +200,46 @@ export async function computeTeamScoreForGame(
     .collect();
   if (players.length === 0) return { score: 0, playerCount: 0, players: [] };
 
-  const perPlayer = await Promise.all(
-    players.map(async (p) => {
-      const answers = await ctx.db
-        .query("answers")
-        .withIndex("by_game_player", (q) => q.eq("gameId", gameId).eq("playerId", p._id))
-        .collect();
-      const points = answers.reduce((sum, a) => sum + a.points, 0);
-      return { name: p.name, points };
-    }),
-  );
-  const total = perPlayer.reduce((sum, p) => sum + p.points, 0);
-  const score = Math.round((total / players.length) * 100) / 100;
-  return { score, playerCount: players.length, players: perPlayer.sort((a, b) => b.points - a.points) };
+  const game = await ctx.db.get(gameId);
+  if (!game) return { score: 0, playerCount: players.length, players: [] };
+  const questions = await loadOrderedQuestions(ctx, game.quizId);
+
+  // points[playerId][questionId], plus each player's own running total for the
+  // per-team breakdown the host screen shows.
+  const byPlayer = new Map<Id<"players">, Map<Id<"questions">, number>>();
+  const perPlayerTotal = new Map<Id<"players">, number>();
+  for (const p of players) {
+    const answers = await ctx.db
+      .query("answers")
+      .withIndex("by_game_player", (q) => q.eq("gameId", gameId).eq("playerId", p._id))
+      .collect();
+    const map = new Map<Id<"questions">, number>();
+    let total = 0;
+    for (const a of answers) {
+      map.set(a.questionId, a.points);
+      total += a.points;
+    }
+    byPlayer.set(p._id, map);
+    perPlayerTotal.set(p._id, total);
+  }
+
+  let score = 0;
+  for (let index = 0; index < questions.length; index++) {
+    const question = questions[index]!;
+    const eligible = players.filter((p) => isEligibleForQuestion(p, index));
+    if (eligible.length === 0) continue;
+    const sum = eligible.reduce(
+      (acc, p) => acc + (byPlayer.get(p._id)?.get(question._id) ?? 0),
+      0,
+    );
+    score += sum / eligible.length;
+  }
+
+  const perPlayer = players
+    .map((p) => ({ name: p.name, points: perPlayerTotal.get(p._id) ?? 0 }))
+    .sort((a, b) => b.points - a.points);
+
+  return { score: Math.round(score), playerCount: players.length, players: perPlayer };
 }
 
 /** Map of teamId -> score for one specific game (used for the "roundScore" delta). */
@@ -192,7 +274,7 @@ export async function buildStandings(
   }
   const rows = teams.map((team) => ({
     team,
-    total: Math.round((totals.get(team._id) ?? 0) * 100) / 100,
+    total: Math.round(totals.get(team._id) ?? 0),
   }));
   rows.sort((a, b) => b.total - a.total || a.team.name.localeCompare(b.team.name));
   return rows.map((r, i) => ({ ...r, rank: i + 1 }));
@@ -252,11 +334,14 @@ export async function closeQuestion(
         .query("players")
         .withIndex("by_game", (q) => q.eq("gameId", gameId))
         .collect();
+      // Only players eligible for this question can answer it, so a late
+      // joiner sitting out must not keep the question open forever.
+      const answerable = players.filter((p) => isEligibleForQuestion(p, game.currentIndex));
       const answers = await ctx.db
         .query("answers")
         .withIndex("by_game_question", (q) => q.eq("gameId", gameId).eq("questionId", question._id))
         .collect();
-      allAnswered = players.length > 0 && answers.length >= players.length;
+      allAnswered = answerable.length > 0 && answers.length >= answerable.length;
     }
     if (!timeUp && !allAnswered) return;
   }

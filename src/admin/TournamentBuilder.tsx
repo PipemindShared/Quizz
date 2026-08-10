@@ -8,7 +8,7 @@ import type { Doc, Id } from "../../convex/_generated/dataModel";
 import Backdrop from "../components/Backdrop";
 import ImageUpload from "../components/ImageUpload";
 import TeamBadge from "../components/TeamBadge";
-import { TEAM_COLORS } from "../lib/utils";
+import { formatScore, TEAM_COLORS } from "../lib/utils";
 
 function errMsg(e: unknown): string {
   return e instanceof ConvexError ? (e.data as string) : "Something went wrong";
@@ -583,7 +583,7 @@ export default function TournamentBuilder() {
                   </div>
 
                   <div className="shrink-0 text-sm text-white/60">
-                    {q.questionCount} questions · {q.totalPoints} pts
+                    {q.questionCount} questions · {formatScore(q.totalPoints * 100)} pts
                   </div>
 
                   <label className="flex shrink-0 items-center gap-2 text-sm text-white/70">

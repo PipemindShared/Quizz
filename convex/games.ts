@@ -368,6 +368,15 @@ export const getHostState = query({
       tournament: { _id: tournament._id, name: tournament.name },
       teams,
       playerCount: players.length,
+      /**
+       * How many players can actually answer the open question. Excludes anyone
+       * who joined after it opened, so the "x / y answered" ticker can reach
+       * completion and the auto-close isn't blocked by a late arrival.
+       */
+      answerableCount:
+        game.currentIndex >= 0
+          ? players.filter((p) => lib.isEligibleForQuestion(p, game.currentIndex)).length
+          : players.length,
       answeredCount,
       question,
       reveal,

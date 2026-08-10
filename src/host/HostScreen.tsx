@@ -8,6 +8,7 @@ import type { Id } from "../../convex/_generated/dataModel";
 import type { GameStatus } from "./types";
 import Backdrop from "../components/Backdrop";
 import FitToScreen from "./FitToScreen";
+import JoinQrPopover from "./JoinQrPopover";
 import HostLobby from "./HostLobby";
 import HostQuestion from "./HostQuestion";
 import HostReveal from "./HostReveal";
@@ -57,6 +58,7 @@ export default function HostScreen() {
 
   // ---- Control bar auto-dim ----
   const [dimmed, setDimmed] = useState(false);
+  const [qrOpen, setQrOpen] = useState(false);
   const dimTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const wake = useCallback(() => {
@@ -95,6 +97,8 @@ export default function HostScreen() {
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (status === "finished" || !status) return;
+      // The QR overlay owns the keyboard while it is up.
+      if (qrOpen) return;
       if (e.key === " " || e.key === "ArrowRight") {
         e.preventDefault();
         primaryAction();
@@ -102,7 +106,7 @@ export default function HostScreen() {
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [status, primaryAction]);
+  }, [status, primaryAction, qrOpen]);
 
   // ---- No gameId in the route at all ----
   if (!id) {
@@ -200,7 +204,7 @@ export default function HostScreen() {
           question={state.question}
           game={state.game}
           answeredCount={state.answeredCount}
-          playerCount={state.playerCount}
+          playerCount={state.answerableCount}
           onAutoClose={onAutoClose}
         />
       ) : (
@@ -300,19 +304,22 @@ export default function HostScreen() {
           </div>
         </div>
 
-        {primaryLabel ? (
-          <div className="flex shrink-0 items-center gap-3">
-            <span className="hidden text-xs text-white/35 sm:inline">Space / →</span>
-            <button
-              type="button"
-              className="btn-primary"
-              disabled={primaryDisabled}
-              onClick={primaryAction}
-            >
-              {primaryLabel}
-            </button>
-          </div>
-        ) : null}
+        <div className="flex shrink-0 items-center gap-3">
+          <JoinQrPopover code={state.game.code} onOpenChange={setQrOpen} />
+          {primaryLabel ? (
+            <>
+              <span className="hidden text-xs text-white/35 sm:inline">Space / →</span>
+              <button
+                type="button"
+                className="btn-primary"
+                disabled={primaryDisabled}
+                onClick={primaryAction}
+              >
+                {primaryLabel}
+              </button>
+            </>
+          ) : null}
+        </div>
       </motion.div>
     </>
   );

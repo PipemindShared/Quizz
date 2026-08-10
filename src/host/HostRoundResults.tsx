@@ -4,7 +4,7 @@ import { Crown, Sparkles, Trophy } from "lucide-react";
 import TeamBadge from "../components/TeamBadge";
 import type { HostState } from "./types";
 import { rain } from "../lib/celebrate";
-import { cn } from "../lib/utils";
+import { cn, formatScore } from "../lib/utils";
 
 export type HostRoundResultsProps = {
   roundScores: NonNullable<HostState["roundScores"]>;
@@ -54,7 +54,7 @@ export default function HostRoundResults({ roundScores, quizName }: HostRoundRes
         </h1>
         <div className="mt-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-white/40">
           <Sparkles className="h-3.5 w-3.5 text-neon-2" />
-          <span>Score shown is the average points per player</span>
+          <span>Per question: the average of the players present for it</span>
         </div>
       </header>
 
@@ -116,10 +116,10 @@ export default function HostRoundResults({ roundScores, quizName }: HostRoundRes
                       isBest ? "text-4xl grad-text" : "text-2xl text-white/85",
                     )}
                   >
-                    {team.score.toFixed(2)}
+                    {formatScore(team.score)}
                   </div>
                   <div className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/35">
-                    avg / player
+                    points
                   </div>
                 </div>
 

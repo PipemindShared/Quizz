@@ -85,6 +85,42 @@ export const ANSWER_KIND_LABEL: Record<string, string> = {
 /** 1234 -> "1.2s" */
 export const seconds = (ms: number) => `${(ms / 1000).toFixed(1)}s`;
 
+/**
+ * Scores are whole numbers in the hundreds (points are scaled by 100 so the
+ * speed bonus doesn't need decimals), so group the thousands to keep a
+ * four-figure total readable across a room.
+ */
+export const formatScore = (n: number) => Math.round(n).toLocaleString("en-US");
+
+/** Most a question can be worth: its difficulty at full speed. */
+export const maxQuestionPoints = (difficulty: number) => difficulty * 100;
+
+/**
+ * Scoring, mirrored from the backend so test mode can preview real scores.
+ * MUST stay identical to convex/lib.ts#speedFactor / #pointsForCorrectAnswer —
+ * the client can't import from convex/, so this is a deliberate, tracked
+ * duplicate (as with normalizeAnswer above).
+ */
+export const SPEED_GRACE_MS = 1500;
+
+export function speedFactor(elapsedMs: number, timeLimitSec: number): number {
+  const past = elapsedMs - SPEED_GRACE_MS;
+  if (past <= 0) return 1;
+  const window = timeLimitSec * 1000 - SPEED_GRACE_MS;
+  if (window <= 0) return 1;
+  return Math.max(0, Math.min(1, 1 - past / window));
+}
+
+/** Half for being right, half for being quick. */
+export function pointsForCorrect(
+  difficulty: number,
+  elapsedMs: number,
+  timeLimitSec: number,
+): number {
+  const max = maxQuestionPoints(difficulty);
+  return Math.round(max * (0.5 + 0.5 * speedFactor(elapsedMs, timeLimitSec)));
+}
+
 export const clamp = (n: number, min: number, max: number) =>
   Math.min(max, Math.max(min, n));
 
