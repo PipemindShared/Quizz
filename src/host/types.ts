@@ -31,6 +31,16 @@ export type HostTeam = {
   members: string[];
   playerCount: number;
   playerNames: string[];
+  /** Names on the roster — the denominator for percentage attendance. */
+  roster: number;
+  /** Live attendance bonus; null when the tournament has none configured. */
+  presence: {
+    maxBonusPercent: number;
+    bonusPercent: number;
+    attendance: number;
+    /** Extra players needed before any bonus is earned; 0 once it is. */
+    playersToMin: number;
+  } | null;
 };
 
 export type HostQuestion = {
@@ -89,9 +99,13 @@ export type HostRoundScore = {
   name: string;
   color: string;
   iconId?: Id<"_storage">;
-  score: number; // average of players' points, 2 decimals
+  /** Final score for the round, attendance bonus included. */
+  score: number;
   playerCount: number;
   players: { name: string; points: number }[];
+  /** Score before the attendance bonus, and the bonus applied (0 when none). */
+  baseScore: number;
+  bonusPercent: number;
 };
 
 export type HostStanding = {

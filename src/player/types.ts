@@ -84,7 +84,11 @@ export type RoundScore = {
   teamId: Id<"teams">;
   name: string;
   color: string;
+  /** Final score for the round, attendance bonus included. */
   score: number;
+  /** Score before the attendance bonus, and the bonus applied (0 when none). */
+  baseScore: number;
+  bonusPercent: number;
   isMyTeam: boolean;
 };
 

@@ -44,15 +44,29 @@ async function enterRoundResults(ctx: MutationCtx, game: Doc<"games">): Promise<
     .query("teams")
     .withIndex("by_tournament", (q) => q.eq("tournamentId", game.tournamentId))
     .collect();
+  const tournament = await ctx.db.get(game.tournamentId);
+  const bonusConfig = tournament?.presenceBonus;
+
   for (const team of teams) {
-    const { score, playerCount } = await lib.computeTeamScoreForGame(ctx, game._id, team._id);
+    const { score: baseScore, playerCount } = await lib.computeTeamScoreForGame(
+      ctx,
+      game._id,
+      team._id,
+    );
+    // Turnout is judged on who joined this game, against the roster as it
+    // stands now.
+    const bonusPercent = bonusConfig
+      ? lib.presenceBonusPercent(bonusConfig, playerCount, team.members.length)
+      : 0;
     await ctx.db.insert("gameResults", {
       gameId: game._id,
       quizId: game.quizId,
       tournamentId: game.tournamentId,
       teamId: team._id,
-      score,
+      score: lib.applyBonus(baseScore, bonusPercent),
       playerCount,
+      baseScore,
+      bonusPercent,
     });
   }
 
@@ -198,6 +212,8 @@ export const getHostState = query({
       playersByTeam.set(p.teamId, arr);
     }
 
+    const bonusConfig = tournament.presenceBonus;
+
     const teams = teamDocs.map((t) => {
       // Newest joiner first: the lobby only has room to show a handful, and the
       // useful ones are the people who just scanned and are looking for their
@@ -213,6 +229,33 @@ export const getHostState = query({
         members: t.members,
         playerCount: ps.length,
         playerNames: ps.map((p) => p.name),
+        /** Names on the roster — the denominator for percentage attendance. */
+        roster: t.members.length,
+        /**
+         * Live attendance bonus, so the lobby can show it climbing while people
+         * join — the whole point being that a team can see what it's still
+         * leaving on the table.
+         */
+        presence: bonusConfig
+          ? {
+              maxBonusPercent: bonusConfig.maxBonusPercent,
+              bonusPercent: lib.presenceBonusPercent(
+                bonusConfig,
+                ps.length,
+                t.members.length,
+              ),
+              attendance:
+                Math.round(
+                  lib.attendanceValue(bonusConfig.mode, ps.length, t.members.length) * 10,
+                ) / 10,
+              /** Extra players needed before any bonus is earned; 0 once it is. */
+              playersToMin: lib.playersNeededForBonus(
+                bonusConfig,
+                ps.length,
+                t.members.length,
+              ),
+            }
+          : null,
       };
     });
 
@@ -332,6 +375,9 @@ export const getHostState = query({
             score: r.score,
             playerCount: r.playerCount,
             players: rosterPoints,
+            /** What the turnout was worth, for the results breakdown. */
+            baseScore: r.baseScore ?? r.score,
+            bonusPercent: r.bonusPercent ?? 0,
           };
         }),
       );

@@ -3,7 +3,7 @@ import { motion, useReducedMotion, AnimatePresence } from "framer-motion";
 import { Crown, Medal, Trophy } from "lucide-react";
 import type { RoundScore, Standing } from "./types";
 import { sideCannons } from "../lib/celebrate";
-import { cn, ordinal } from "../lib/utils";
+import { cn, formatScore, ordinal } from "../lib/utils";
 
 const RANK_TINT: Record<number, string> = {
   1: "#ffc94d",
@@ -56,11 +56,25 @@ export default function PlayerStandings(props: {
                 className="h-8 w-8 shrink-0 rounded-xl"
                 style={{ backgroundColor: row.color }}
               />
-              <span className="flex-1 truncate font-display text-base font-semibold text-white">
-                {row.name}
+              <span className="min-w-0 flex-1">
+                <span className="block truncate font-display text-base font-semibold text-white">
+                  {row.name}
+                </span>
+                {row.bonusPercent > 0 && (
+                  <span className="text-[11px] font-semibold tabular-nums text-mint">
+                    +{row.bonusPercent}% attendance
+                  </span>
+                )}
               </span>
-              <span className="font-display text-lg font-extrabold text-white">
-                {row.score}
+              <span className="shrink-0 text-right">
+                <span className="block font-display text-lg font-extrabold text-white">
+                  {formatScore(row.score)}
+                </span>
+                {row.bonusPercent > 0 && (
+                  <span className="text-[10px] tabular-nums text-white/40">
+                    from {formatScore(row.baseScore)}
+                  </span>
+                )}
               </span>
             </motion.li>
           ))}

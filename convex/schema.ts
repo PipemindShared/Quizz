@@ -39,12 +39,37 @@ export const gameStatus = v.union(
   v.literal("finished"),
 );
 
+/**
+ * Rewards teams for turning up in numbers. Attendance is measured per game, as
+ * either a percentage of the team's roster or a raw headcount, and converted to
+ * a bonus percentage that ramps linearly:
+ *
+ *   below minAttendance          -> +0%
+ *   at or above maxAttendance    -> +maxBonusPercent
+ *   in between                   -> proportionally
+ *
+ * So min 60 / max 90 / bonus 50 means 60% turnout earns nothing, 75% earns
+ * +25%, and 90% or better earns the full +50%.
+ */
+export const presenceBonus = v.object({
+  /** "percent" measures against the team's roster; "count" is a raw headcount. */
+  mode: v.union(v.literal("percent"), v.literal("count")),
+  /** Attendance at which the bonus starts accruing. */
+  minAttendance: v.number(),
+  /** Attendance at which the bonus is maxed out. */
+  maxAttendance: v.number(),
+  /** The bonus, in percent, awarded at maxAttendance. */
+  maxBonusPercent: v.number(),
+});
+
 export default defineSchema({
   tournaments: defineTable({
     name: v.string(),
     description: v.optional(v.string()),
     /** set once the final quiz has been played */
     completedAt: v.optional(v.number()),
+    /** Absent means no attendance bonus is in play for this tournament. */
+    presenceBonus: v.optional(presenceBonus),
   }),
 
   teams: defineTable({
@@ -161,9 +186,19 @@ export default defineSchema({
     quizId: v.id("quizzes"),
     tournamentId: v.id("tournaments"),
     teamId: v.id("teams"),
-    /** team score = average of its players' points for that quiz */
+    /**
+     * The team's final score for the quiz, presence bonus included. Standings
+     * sum this, so it stays the single source of truth for ranking.
+     */
     score: v.number(),
     playerCount: v.number(),
+    /**
+     * Score before the presence bonus, and the bonus that was applied. Kept so
+     * the results screens can show what the turnout was worth. Optional because
+     * quizzes played before the bonus existed have neither.
+     */
+    baseScore: v.optional(v.number()),
+    bonusPercent: v.optional(v.number()),
   })
     .index("by_tournament", ["tournamentId"])
     .index("by_game", ["gameId"]),

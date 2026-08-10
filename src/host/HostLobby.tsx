@@ -156,8 +156,39 @@ export default function HostLobby({ quiz, code, teams, playerCount, canStart }: 
                   <div className="font-display text-lg font-bold leading-tight">{team.name}</div>
                   <div className="mt-0.5 text-xs font-semibold uppercase tracking-[0.12em] text-white/40">
                     {team.playerCount} {team.playerCount === 1 ? "player" : "players"}
+                    {team.presence && team.roster > 0 ? ` of ${team.roster}` : ""}
                   </div>
                 </div>
+
+                {/* Attendance bonus, live. The point is social pressure: a team
+                    that can see what it is still leaving on the table has a
+                    reason to go and fetch the people who haven't joined. */}
+                {team.presence && (
+                  <div
+                    className={cn(
+                      "w-full rounded-2xl px-3 py-2 text-center",
+                      team.presence.bonusPercent > 0 ? "bg-mint/15" : "bg-white/5",
+                    )}
+                  >
+                    <div
+                      className={cn(
+                        "font-display text-xl font-extrabold tabular-nums leading-none",
+                        team.presence.bonusPercent > 0 ? "text-mint" : "text-white/35",
+                      )}
+                    >
+                      +{team.presence.bonusPercent}%
+                    </div>
+                    <div className="mt-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-white/40">
+                      {team.presence.playersToMin > 0
+                        ? `${team.presence.playersToMin} more ${
+                            team.presence.playersToMin === 1 ? "player" : "players"
+                          } to start earning`
+                        : team.presence.bonusPercent >= team.presence.maxBonusPercent
+                          ? "bonus maxed"
+                          : "attendance bonus"}
+                    </div>
+                  </div>
+                )}
                 <div className="flex w-full flex-col items-center gap-1.5">
                   <AnimatePresence initial={false}>
                     {team.playerNames.slice(0, NAMES_SHOWN).map((name) => (

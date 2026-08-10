@@ -162,6 +162,8 @@ export const getPlayState = query({
             name: team?.name ?? "?",
             color: team?.color ?? "#888888",
             score: r.score,
+            baseScore: r.baseScore ?? r.score,
+            bonusPercent: r.bonusPercent ?? 0,
             isMyTeam: me ? r.teamId === me.teamId : false,
           };
         })

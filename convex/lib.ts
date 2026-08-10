@@ -155,6 +155,76 @@ export function isEligibleForQuestion(player: Doc<"players">, index: number): bo
 }
 
 /* ------------------------------------------------------------------ */
+/* Presence bonus                                                       */
+/* ------------------------------------------------------------------ */
+
+export type PresenceBonusConfig = {
+  mode: "percent" | "count";
+  minAttendance: number;
+  maxAttendance: number;
+  maxBonusPercent: number;
+};
+
+/**
+ * A team's attendance in whichever unit the tournament is configured for: a
+ * percentage of its roster, or a headcount. A roster of zero has no meaningful
+ * percentage, so it reads as 0 rather than dividing by zero.
+ */
+export function attendanceValue(
+  mode: "percent" | "count",
+  playersJoined: number,
+  rosterSize: number,
+): number {
+  if (mode === "count") return playersJoined;
+  return rosterSize > 0 ? (playersJoined / rosterSize) * 100 : 0;
+}
+
+/**
+ * How much bonus the current turnout has earned, in percent. Ramps linearly
+ * from 0 at minAttendance to maxBonusPercent at maxAttendance. Rounded to one
+ * decimal so the lobby's climbing number doesn't jitter.
+ */
+export function presenceBonusPercent(
+  config: PresenceBonusConfig,
+  playersJoined: number,
+  rosterSize: number,
+): number {
+  const attendance = attendanceValue(config.mode, playersJoined, rosterSize);
+  if (attendance < config.minAttendance) return 0;
+  if (attendance >= config.maxAttendance) return config.maxBonusPercent;
+  const span = config.maxAttendance - config.minAttendance;
+  // A zero-width band means the minimum is also the maximum: reaching it pays
+  // in full rather than dividing by zero.
+  if (span <= 0) return config.maxBonusPercent;
+  const earned =
+    (config.maxBonusPercent * (attendance - config.minAttendance)) / span;
+  return Math.round(earned * 10) / 10;
+}
+
+/** Applies a bonus percentage to a base score, rounded to a whole point. */
+export function applyBonus(baseScore: number, bonusPercent: number): number {
+  return Math.round(baseScore * (1 + bonusPercent / 100));
+}
+
+/**
+ * How many more people need to join before the bonus starts, expressed in
+ * players even when the target is a percentage — "5 more to start earning" is
+ * something a room can act on, where "37 more" (percentage points) reads like a
+ * headcount and is nonsense.
+ */
+export function playersNeededForBonus(
+  config: PresenceBonusConfig,
+  playersJoined: number,
+  rosterSize: number,
+): number {
+  const needed =
+    config.mode === "count"
+      ? config.minAttendance
+      : Math.ceil((rosterSize * config.minAttendance) / 100);
+  return Math.max(0, Math.ceil(needed - playersJoined));
+}
+
+/* ------------------------------------------------------------------ */
 /* Questions                                                            */
 /* ------------------------------------------------------------------ */
 

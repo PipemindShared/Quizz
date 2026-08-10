@@ -111,6 +111,38 @@ export function speedFactor(elapsedMs: number, timeLimitSec: number): number {
   return Math.max(0, Math.min(1, 1 - past / window));
 }
 
+/**
+ * Attendance bonus, mirrored from convex/lib.ts#presenceBonusPercent so the
+ * builder can preview payouts and the lobby can label the goal.
+ * MUST stay identical to the backend — another deliberate, tracked duplicate.
+ */
+export function presenceBonusAt(
+  config: {
+    mode: "percent" | "count";
+    minAttendance: number;
+    maxAttendance: number;
+    maxBonusPercent: number;
+  },
+  playersJoined: number,
+  rosterSize: number,
+): number {
+  const attendance =
+    config.mode === "count"
+      ? playersJoined
+      : rosterSize > 0
+        ? (playersJoined / rosterSize) * 100
+        : 0;
+  if (attendance < config.minAttendance) return 0;
+  if (attendance >= config.maxAttendance) return config.maxBonusPercent;
+  const span = config.maxAttendance - config.minAttendance;
+  if (span <= 0) return config.maxBonusPercent;
+  return (
+    Math.round(
+      ((config.maxBonusPercent * (attendance - config.minAttendance)) / span) * 10,
+    ) / 10
+  );
+}
+
 /** Half for being right, half for being quick. */
 export function pointsForCorrect(
   difficulty: number,

@@ -6,6 +6,7 @@ import { Check, Link2, LoaderCircle, Plus, Trash2, X } from "lucide-react";
 import { api } from "../../convex/_generated/api";
 import type { Doc, Id } from "../../convex/_generated/dataModel";
 import Backdrop from "../components/Backdrop";
+import PresenceBonusSettings from "./PresenceBonusSettings";
 import ImageUpload from "../components/ImageUpload";
 import TeamBadge from "../components/TeamBadge";
 import { formatScore, TEAM_COLORS } from "../lib/utils";
@@ -471,6 +472,11 @@ export default function TournamentBuilder() {
             placeholder="Description (optional)"
           />
         </div>
+
+        <PresenceBonusSettings
+          tournamentId={tournamentId}
+          value={tournament.presenceBonus}
+        />
 
         {error && (
           <div className="glass-soft mb-4 flex items-center justify-between gap-3 border-siren/40 px-4 py-3 text-sm text-siren">

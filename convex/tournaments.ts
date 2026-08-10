@@ -1,5 +1,6 @@
-import { ConvexError, v } from "convex/values";
+import { ConvexError, v, type Infer } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { presenceBonus } from "./schema";
 import * as lib from "./lib";
 
 export const list = query({
@@ -80,18 +81,46 @@ export const update = mutation({
     tournamentId: v.id("tournaments"),
     name: v.optional(v.string()),
     description: v.optional(v.string()),
+    /** Pass null to turn the attendance bonus off. */
+    presenceBonus: v.optional(v.union(presenceBonus, v.null())),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
     const tournament = await ctx.db.get(args.tournamentId);
     if (!tournament) throw new ConvexError("Tournament not found");
-    const patch: { name?: string; description?: string } = {};
+    const patch: {
+      name?: string;
+      description?: string;
+      presenceBonus?: Infer<typeof presenceBonus> | undefined;
+    } = {};
     if (args.name !== undefined) {
       const name = args.name.trim();
       if (!name) throw new ConvexError("Name is required");
       patch.name = name;
     }
     if (args.description !== undefined) patch.description = args.description;
+    if (args.presenceBonus !== undefined) {
+      if (args.presenceBonus === null) {
+        patch.presenceBonus = undefined;
+      } else {
+        const b = args.presenceBonus;
+        if (b.maxBonusPercent < 0 || b.maxBonusPercent > 500) {
+          throw new ConvexError("The bonus must be between 0% and 500%");
+        }
+        if (b.minAttendance < 0 || b.maxAttendance < 0) {
+          throw new ConvexError("Attendance targets can't be negative");
+        }
+        if (b.maxAttendance < b.minAttendance) {
+          throw new ConvexError(
+            "The maximum attendance must be at least the minimum",
+          );
+        }
+        if (b.mode === "percent" && b.maxAttendance > 100) {
+          throw new ConvexError("A percentage target can't exceed 100%");
+        }
+        patch.presenceBonus = b;
+      }
+    }
     await ctx.db.patch(args.tournamentId, patch);
     return null;
   },

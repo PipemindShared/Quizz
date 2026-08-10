@@ -124,6 +124,18 @@ export default function HostRoundResults({ roundScores, quizName }: HostRoundRes
                   <div className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/35">
                     points
                   </div>
+                  {/* Shows the turnout's contribution explicitly, so a team can
+                      see that showing up in numbers is what moved the number. */}
+                  {team.bonusPercent > 0 && (
+                    <div className="mt-1.5 flex flex-col items-center gap-0.5">
+                      <span className="rounded-full bg-mint/15 px-2 py-0.5 text-[11px] font-bold tabular-nums text-mint">
+                        +{team.bonusPercent}% attendance
+                      </span>
+                      <span className="text-[10px] tabular-nums text-white/40">
+                        {formatScore(team.baseScore)} + {formatScore(team.score - team.baseScore)}
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Bar */}
