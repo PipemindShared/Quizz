@@ -150,11 +150,12 @@ export default function AdminHome() {
     }
   }
 
-  async function handleReset(id: Id<"tournaments">) {
+  async function handleReset(id: Id<"tournaments">, keepTeams: boolean) {
     setError(null);
     setBusyId(id);
+    setConfirm(null);
     try {
-      await resetT({ tournamentId: id });
+      await resetT({ tournamentId: id, keepTeams });
     } catch (e) {
       setError(errMsg(e));
     } finally {
@@ -285,44 +286,69 @@ export default function AdminHome() {
                     actions plus a confirmation, and it also makes clear which
                     of the two destructive actions is being confirmed. */}
                 {confirm?.id === t._id ? (
-                  <div className="mt-2 flex flex-col gap-2">
-                    <p className="text-xs leading-snug text-white/70">
-                      {confirm.action === "reset"
-                        ? "Remove every team and played game? The quizzes are kept."
-                        : "Delete this tournament, with its teams and quizzes?"}
-                    </p>
-                    <div className="flex flex-wrap items-center gap-2">
+                  confirm.action === "reset" ? (
+                    // Resetting always clears the played games; whether the
+                    // teams go with them is the actual question, so it gets its
+                    // own button rather than hiding behind one "Reset".
+                    <div className="mt-2 flex flex-col gap-2">
+                      <p className="text-xs leading-snug text-white/70">
+                        Reset clears every played game so this tournament can run
+                        again. The quizzes are kept — what about the {t.teamCount}{" "}
+                        {t.teamCount === 1 ? "team" : "teams"}?
+                      </p>
                       <button
-                        className={
-                          confirm.action === "reset"
-                            ? "btn-ghost grow text-sun"
-                            : "btn-ghost grow text-siren"
-                        }
+                        className="btn-ghost w-full text-sun"
                         disabled={busyId === t._id}
-                        onClick={() => {
-                          const { action } = confirm;
-                          setConfirm(null);
-                          if (action === "reset") void handleReset(t._id);
-                          else void handleDelete(t._id);
-                        }}
+                        onClick={() => void handleReset(t._id, true)}
                       >
-                        {busyId === t._id ? (
-                          <LoaderCircle className="h-4 w-4 animate-spin" />
-                        ) : confirm.action === "reset" ? (
-                          <RotateCcw className="h-4 w-4" />
-                        ) : (
-                          <Trash2 className="h-4 w-4" />
-                        )}
-                        {confirm.action === "reset" ? "Reset" : "Delete"}
+                        <RotateCcw className="h-4 w-4" />
+                        Reset, keep teams
                       </button>
                       <button
-                        className="btn-ghost grow"
+                        className="btn-ghost w-full text-siren"
+                        disabled={busyId === t._id}
+                        onClick={() => void handleReset(t._id, false)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        Reset and remove teams
+                      </button>
+                      <button
+                        className="btn-ghost w-full"
                         onClick={() => setConfirm(null)}
                       >
                         Cancel
                       </button>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="mt-2 flex flex-col gap-2">
+                      <p className="text-xs leading-snug text-white/70">
+                        Delete this tournament, with its teams and quizzes?
+                      </p>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          className="btn-ghost grow text-siren"
+                          disabled={busyId === t._id}
+                          onClick={() => {
+                            setConfirm(null);
+                            void handleDelete(t._id);
+                          }}
+                        >
+                          {busyId === t._id ? (
+                            <LoaderCircle className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
+                          Delete
+                        </button>
+                        <button
+                          className="btn-ghost grow"
+                          onClick={() => setConfirm(null)}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )
                 ) : (
                   <div className="mt-2 flex flex-wrap items-center gap-2">
                     <Link to={`/admin/t/${t._id}`} className="btn-ghost grow">

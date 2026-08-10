@@ -98,11 +98,17 @@ export const update = mutation({
 });
 
 /**
- * Restarts a tournament: keeps its quizzes/questions but removes every team
- * and every game played against them, so it can be replayed from scratch.
+ * Restarts a tournament so it can be played again: always clears every played
+ * game (and with it the players, answers and frozen results), always keeps the
+ * quizzes and their questions.
+ *
+ * `keepTeams` decides the rest. Replaying with the same line-up wants the teams
+ * kept; running the same quizzes for a different group wants them cleared. A
+ * team's roster grows as players join, so keeping teams also keeps whatever
+ * names were added during the games being cleared.
  */
 export const reset = mutation({
-  args: { tournamentId: v.id("tournaments") },
+  args: { tournamentId: v.id("tournaments"), keepTeams: v.boolean() },
   returns: v.null(),
   handler: async (ctx, args) => {
     const tournament = await ctx.db.get(args.tournamentId);
@@ -120,11 +126,15 @@ export const reset = mutation({
       for (const game of games) await lib.deleteGameCascade(ctx, game._id);
     }
 
-    const teams = await ctx.db
-      .query("teams")
-      .withIndex("by_tournament", (q) => q.eq("tournamentId", args.tournamentId))
-      .collect();
-    for (const team of teams) await ctx.db.delete(team._id);
+    if (!args.keepTeams) {
+      const teams = await ctx.db
+        .query("teams")
+        .withIndex("by_tournament", (q) => q.eq("tournamentId", args.tournamentId))
+        .collect();
+      // Plain deletes are enough: every player, answer and result row belonging
+      // to these teams went with the games above.
+      for (const team of teams) await ctx.db.delete(team._id);
+    }
 
     await ctx.db.patch(args.tournamentId, { completedAt: undefined });
     return null;
