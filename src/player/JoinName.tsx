@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowLeft, LoaderCircle, TriangleAlert } from "lucide-react";
+import { ArrowLeft, LoaderCircle, TriangleAlert, UserPlus } from "lucide-react";
 import type { PlayTeam } from "./types";
 import TeamBadge from "../components/TeamBadge";
 import { cn } from "../lib/utils";
@@ -93,14 +93,29 @@ export default function JoinName(props: {
       )}
 
       {!customOpen ? (
-        <button
-          type="button"
-          disabled={joining}
-          onClick={() => setCustomOpen(true)}
-          className="text-left text-base text-white/60 underline underline-offset-4 disabled:opacity-40"
-        >
-          I'm not on the list
-        </button>
+        // Given as much visual weight as the roster chips: anyone who isn't on
+        // the list is stuck until they find this, and a faint underlined link is
+        // easy to miss on a phone in a noisy room.
+        <div className="flex flex-col gap-3">
+          {team.members.length > 0 && (
+            <div className="flex items-center gap-3" aria-hidden>
+              <span className="h-px flex-1 bg-white/10" />
+              <span className="text-xs font-semibold uppercase tracking-[0.14em] text-white/40">
+                or
+              </span>
+              <span className="h-px flex-1 bg-white/10" />
+            </div>
+          )}
+          <button
+            type="button"
+            disabled={joining}
+            onClick={() => setCustomOpen(true)}
+            className="btn-ghost min-h-[52px] w-full text-base"
+          >
+            <UserPlus className="h-5 w-5 shrink-0" />
+            I&apos;m not on the list
+          </button>
+        </div>
       ) : (
         <div className="flex flex-col gap-3">
           <label className="label" htmlFor="join-name-input">
