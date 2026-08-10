@@ -22,11 +22,24 @@ export default function JoinName(props: {
   const { team, onBack, onJoin, joining, error } = props;
   const [customOpen, setCustomOpen] = useState(false);
   const [customName, setCustomName] = useState("");
+  const [filter, setFilter] = useState("");
   // Tracks which control was tapped so only *that* one shows a spinner while
   // `joining` is true (the others stay disabled but stay quiet).
   const [activeName, setActiveName] = useState<string | null>(null);
 
   const trimmed = customName.trim();
+
+  /**
+   * Past this many names, scanning the roster stops being realistic on a phone,
+   * so a filter is offered. Below it the chips are quicker to read than to type
+   * against.
+   */
+  const FILTER_FROM = 12;
+  const showFilter = team.members.length > FILTER_FROM;
+  const needle = filter.trim().toLowerCase();
+  const visibleMembers = needle
+    ? team.members.filter((m) => m.toLowerCase().includes(needle))
+    : team.members;
 
   const handleRosterTap = (name: string) => {
     if (joining) return;
@@ -67,10 +80,31 @@ export default function JoinName(props: {
       )}
 
       {team.members.length > 0 && (
-        <div>
-          <p className="label">That's me</p>
-          <div className="flex flex-wrap gap-2">
-            {team.members.map((name) => {
+        <div className="flex min-h-0 flex-col">
+          <p className="label">That&apos;s me</p>
+
+          {showFilter && (
+            <input
+              className="field mb-3 text-base"
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              placeholder={`Find your name (${team.members.length} on this team)`}
+              autoCapitalize="off"
+              autoComplete="off"
+              disabled={joining}
+              aria-label="Filter the team roster"
+            />
+          )}
+
+          {/*
+           * Height-capped and scrolled internally. A long roster used to push
+           * "I'm not on the list" hundreds of pixels below the fold — with 50
+           * names it sat 729px down, so the one control a player not on the
+           * roster needs was effectively invisible. Capping the list keeps it
+           * on screen no matter how big the team is.
+           */}
+          <div className="no-scrollbar flex max-h-[38vh] flex-wrap content-start gap-2 overflow-y-auto">
+            {visibleMembers.map((name) => {
               const isActive = joining && activeName === name;
               return (
                 <button
@@ -89,6 +123,12 @@ export default function JoinName(props: {
               );
             })}
           </div>
+
+          {visibleMembers.length === 0 && (
+            <p className="mt-1 text-sm text-white/55">
+              No name matches &ldquo;{filter.trim()}&rdquo; — join as someone new below.
+            </p>
+          )}
         </div>
       )}
 
