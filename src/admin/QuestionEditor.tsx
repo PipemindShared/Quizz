@@ -24,7 +24,7 @@ const ANSWER_KINDS: AnswerKind[] = [
   "image_text_choice",
 ];
 
-const TIME_PRESETS = [10, 20, 30, 45, 60];
+const TIME_PRESETS = [5, 10, 15, 20, 30];
 const POINT_VALUES = [1, 2, 3] as const;
 
 function errMsg(e: unknown): string {
@@ -63,9 +63,12 @@ export default function QuestionEditor({ quizId, question, onDone }: Props) {
     question?.acceptedAnswers ?? [],
   );
   const [acceptedDraft, setAcceptedDraft] = useState("");
+  const [caseSensitive, setCaseSensitive] = useState<boolean>(
+    question?.caseSensitive ?? false,
+  );
 
   const [points, setPoints] = useState<number>(question?.points ?? 2);
-  const [timeLimit, setTimeLimit] = useState<number>(question?.timeLimit ?? 20);
+  const [timeLimit, setTimeLimit] = useState<number>(question?.timeLimit ?? 10);
 
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -122,6 +125,7 @@ export default function QuestionEditor({ quizId, question, onDone }: Props) {
         choices: [],
         correctText: correctText.trim(),
         acceptedAnswers: acceptedAnswers.map((a) => a.trim()).filter(Boolean),
+        caseSensitive,
         correctChoice: undefined,
       };
     }
@@ -235,6 +239,14 @@ export default function QuestionEditor({ quizId, question, onDone }: Props) {
                 placeholder="Ottawa"
               />
             </div>
+            <label className="inline-flex items-center gap-2 text-sm text-white/70">
+              <input
+                type="checkbox"
+                checked={caseSensitive}
+                onChange={(e) => setCaseSensitive(e.target.checked)}
+              />
+              Case sensitive
+            </label>
             <div>
               <label className="label">Also accept</label>
               <div className="mb-2 flex flex-wrap gap-2">
