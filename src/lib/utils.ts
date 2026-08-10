@@ -2,14 +2,14 @@ import clsx, { type ClassValue } from "clsx";
 
 export const cn = (...parts: ClassValue[]) => clsx(parts);
 
-/** Loose comparison used for free-text answers: case, accent and punctuation insensitive. */
-export function normalizeAnswer(input: string): string {
-  return input
+/** Loose comparison used for free-text answers: accent and punctuation insensitive, case insensitive unless `caseSensitive`. */
+export function normalizeAnswer(input: string, caseSensitive = false): string {
+  const cased = caseSensitive ? input : input.toLowerCase();
+  return cased
     .trim()
-    .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9\s]/g, "")
+    .replace(caseSensitive ? /[^a-zA-Z0-9\s]/g : /[^a-z0-9\s]/g, "")
     .replace(/\s+/g, " ");
 }
 

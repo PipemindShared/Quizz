@@ -76,13 +76,13 @@ export async function generateUniqueEditToken(ctx: MutationCtx): Promise<string>
  * MUST stay identical to src/lib/utils.ts#normalizeAnswer — the backend
  * can't import from src/, so this is a deliberate, tracked duplicate.
  */
-export function normalizeAnswer(input: string): string {
-  return input
+export function normalizeAnswer(input: string, caseSensitive = false): string {
+  const cased = caseSensitive ? input : input.toLowerCase();
+  return cased
     .trim()
-    .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9\s]/g, "")
+    .replace(caseSensitive ? /[^a-zA-Z0-9\s]/g : /[^a-z0-9\s]/g, "")
     .replace(/\s+/g, " ");
 }
 
@@ -92,10 +92,11 @@ export function gradeAnswer(
 ): { correct: boolean; points: number } {
   let correct: boolean;
   if (question.answerKind === "text_input") {
-    const given = normalizeAnswer(submission.text ?? "");
+    const caseSensitive = question.caseSensitive ?? false;
+    const given = normalizeAnswer(submission.text ?? "", caseSensitive);
     const candidates = [question.correctText, ...(question.acceptedAnswers ?? [])]
       .filter((c): c is string => !!c && c.trim().length > 0)
-      .map(normalizeAnswer);
+      .map((c) => normalizeAnswer(c, caseSensitive));
     correct = given.length > 0 && candidates.includes(given);
   } else {
     correct =

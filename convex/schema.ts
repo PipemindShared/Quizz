@@ -91,6 +91,8 @@ export default defineSchema({
     correctText: v.optional(v.string()),
     /** extra spellings accepted for text_input */
     acceptedAnswers: v.optional(v.array(v.string())),
+    /** text_input only: require matching letter case (default false) */
+    caseSensitive: v.optional(v.boolean()),
     /** difficulty: 1 easy, 2 normal, 3 hard */
     points: v.number(),
     /** seconds allowed to answer (default 20) */

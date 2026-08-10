@@ -15,6 +15,7 @@ const questionFields = {
   correctChoice: v.optional(v.number()),
   correctText: v.optional(v.string()),
   acceptedAnswers: v.optional(v.array(v.string())),
+  caseSensitive: v.optional(v.boolean()),
   points: v.number(),
   timeLimit: v.number(),
 };
@@ -27,6 +28,7 @@ const questionFieldsPartial = {
   correctChoice: v.optional(v.number()),
   correctText: v.optional(v.string()),
   acceptedAnswers: v.optional(v.array(v.string())),
+  caseSensitive: v.optional(v.boolean()),
   points: v.optional(v.number()),
   timeLimit: v.optional(v.number()),
 };
@@ -92,6 +94,7 @@ export const create = mutation({
       correctChoice: args.correctChoice,
       correctText: args.correctText,
       acceptedAnswers: args.acceptedAnswers,
+      caseSensitive: args.caseSensitive,
       points: args.points,
       timeLimit: args.timeLimit,
     });
@@ -115,6 +118,7 @@ export const update = mutation({
     if (args.correctChoice !== undefined) patch.correctChoice = args.correctChoice;
     if (args.correctText !== undefined) patch.correctText = args.correctText;
     if (args.acceptedAnswers !== undefined) patch.acceptedAnswers = args.acceptedAnswers;
+    if (args.caseSensitive !== undefined) patch.caseSensitive = args.caseSensitive;
     if (args.points !== undefined) patch.points = args.points;
     if (args.timeLimit !== undefined) patch.timeLimit = args.timeLimit;
 
@@ -171,6 +175,7 @@ export const duplicate = mutation({
       correctChoice: original.correctChoice,
       correctText: original.correctText,
       acceptedAnswers: original.acceptedAnswers,
+      caseSensitive: original.caseSensitive,
       points: original.points,
       timeLimit: original.timeLimit,
     });
