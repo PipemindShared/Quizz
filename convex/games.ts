@@ -199,7 +199,12 @@ export const getHostState = query({
     }
 
     const teams = teamDocs.map((t) => {
-      const ps = playersByTeam.get(t._id) ?? [];
+      // Newest joiner first: the lobby only has room to show a handful, and the
+      // useful ones are the people who just scanned and are looking for their
+      // own name on the screen.
+      const ps = [...(playersByTeam.get(t._id) ?? [])].sort(
+        (a, b) => b.joinedAt - a.joinedAt,
+      );
       return {
         _id: t._id,
         name: t.name,

@@ -11,6 +11,9 @@ export type HostRoundResultsProps = {
   quizName: string;
 };
 
+/** Top scorers listed per team; the rest are summarised as a count. */
+const PLAYERS_SHOWN = 5;
+
 const BAR_MAX = 200; // px — tallest possible bar, leaves room for badge/score above and player list below
 
 export default function HostRoundResults({ roundScores, quizName }: HostRoundResultsProps) {
@@ -141,9 +144,14 @@ export default function HostRoundResults({ roundScores, quizName }: HostRoundRes
                   />
                 </div>
 
-                {/* Per-player breakdown */}
-                <div className="no-scrollbar glass-soft mt-3 max-h-28 w-full space-y-1 overflow-y-auto px-3 py-2">
-                  {sortedPlayers.map((p, i) => (
+                {/* Per-player breakdown — top scorers only.
+                    This used to render every player inside a 112px scrolling
+                    box: with 30 players, 5 were visible and 25 were silently
+                    clipped, which on a TV nobody can scroll just read as a
+                    five-person team. Now it shows a fixed few and says how many
+                    it is leaving out. */}
+                <div className="glass-soft mt-3 w-full space-y-1 px-3 py-2">
+                  {sortedPlayers.slice(0, PLAYERS_SHOWN).map((p, i) => (
                     <div
                       key={`${p.name}-${i}`}
                       className="flex items-center justify-between gap-2 text-xs text-white/70"
@@ -152,6 +160,11 @@ export default function HostRoundResults({ roundScores, quizName }: HostRoundRes
                       <span className="font-semibold tabular-nums text-white/90">{p.points}</span>
                     </div>
                   ))}
+                  {sortedPlayers.length > PLAYERS_SHOWN && (
+                    <div className="pt-0.5 text-center text-[11px] font-semibold text-white/45">
+                      {PLAYERS_SHOWN} of {sortedPlayers.length} shown
+                    </div>
+                  )}
                   {sortedPlayers.length === 0 && (
                     <div className="text-center text-[11px] text-white/25">no players</div>
                   )}

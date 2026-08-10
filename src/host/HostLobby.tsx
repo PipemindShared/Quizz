@@ -47,6 +47,16 @@ function CountUp({ value }: { value: number }) {
   return <span>{display}</span>;
 }
 
+/**
+ * Most recent joiners shown per team, newest first. An uncapped list is what
+ * made a 30-player lobby collapse: the chips pushed the screen to 1938px tall,
+ * so FitToScreen scaled everything to 56% and the join QR — the one thing that
+ * screen exists for — shrank to 156px. Capping keeps the QR full size, and the
+ * newest names are the useful ones, since anyone who just scanned is looking
+ * for their own name.
+ */
+const NAMES_SHOWN = 8;
+
 export default function HostLobby({ quiz, code, teams, playerCount, canStart }: HostLobbyProps) {
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   const joinUrl = `${origin}/play/${code}`;
@@ -150,7 +160,7 @@ export default function HostLobby({ quiz, code, teams, playerCount, canStart }: 
                 </div>
                 <div className="flex w-full flex-col items-center gap-1.5">
                   <AnimatePresence initial={false}>
-                    {team.playerNames.map((name) => (
+                    {team.playerNames.slice(0, NAMES_SHOWN).map((name) => (
                       <motion.div
                         key={name}
                         initial={{ opacity: 0, y: 12, scale: 0.9 }}
@@ -164,6 +174,11 @@ export default function HostLobby({ quiz, code, teams, playerCount, canStart }: 
                       </motion.div>
                     ))}
                   </AnimatePresence>
+                  {team.playerNames.length > NAMES_SHOWN && (
+                    <span className="pt-0.5 text-xs font-semibold text-white/45">
+                      +{team.playerNames.length - NAMES_SHOWN} more
+                    </span>
+                  )}
                   {team.playerNames.length === 0 && (
                     <span className="text-xs text-white/25">no one yet</span>
                   )}
