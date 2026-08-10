@@ -66,7 +66,7 @@ export default function HostQuestion({
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: -24, scale: 0.98 }}
       transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
-      className="relative flex h-screen w-full flex-col overflow-hidden px-8 pt-8 pb-28 sm:px-12"
+      className="relative flex h-dvh w-full flex-col overflow-hidden px-8 pt-6 pb-24 sm:px-12"
     >
       {/* Ambient festive glow blobs */}
       <div aria-hidden className="pointer-events-none absolute -top-32 -left-24 h-96 w-96 rounded-full bg-neon/20 blur-[110px]" />
@@ -119,19 +119,26 @@ export default function HostQuestion({
       </div>
 
       {/* Main content: prompt + image + choices */}
-      <div className="relative z-10 mt-6 flex min-h-0 flex-1 flex-col gap-4">
-        <div className="shrink-0">
-          <h1 className="text-balance text-center font-display text-[clamp(2rem,5vw,5.5rem)] font-extrabold leading-[1.05] tracking-tight">
-            {question.prompt}
-          </h1>
-          {question.promptImageId && (
-            <div className="mx-auto mt-4 h-[clamp(110px,20vh,220px)] max-w-3xl overflow-hidden rounded-3xl border border-white/10">
-              <StorageImage storageId={question.promptImageId} className="h-full w-full object-cover" alt="" />
-            </div>
-          )}
-        </div>
+      <div className="relative z-10 mt-4 flex min-h-0 flex-1 flex-col gap-4">
+        <h1 className="line-clamp-3 shrink-0 text-balance text-center font-display text-[clamp(1.6rem,3.4vw,3.75rem)] font-extrabold leading-[1.08] tracking-tight">
+          {question.prompt}
+        </h1>
 
-        <div className="flex min-h-0 flex-1 items-center justify-center">
+        {/* The prompt image and the choices share the leftover height. Both are
+            flex items with min-h-0 so a tall image can never push the choices
+            (or the answered ticker) off the bottom of the screen. */}
+        {question.promptImageId && (
+          <div className="mx-auto flex min-h-0 w-full max-w-3xl flex-[1_1_0%] items-center justify-center overflow-hidden rounded-3xl border border-white/10 bg-white/[0.04]">
+            <StorageImage
+              storageId={question.promptImageId}
+              fit="contain"
+              className="h-full w-full"
+              alt=""
+            />
+          </div>
+        )}
+
+        <div className="flex min-h-0 flex-[2_1_0%] items-center justify-center">
           <ChoicesArea question={question} reducedMotion={reducedMotion} />
         </div>
       </div>
@@ -193,19 +200,32 @@ function ChoicesArea({
   }
 
   // image_choice / image_text_choice
+  // `object-contain` matters here: these are usually faces, and cropping to fill
+  // a landscape cell cut off the eyes and forehead — exactly what players need.
   return (
-    <div className="grid h-full w-full max-w-5xl grid-cols-2 gap-4">
+    // 2x2 by default, but a single row on wide screens: choice photos are
+    // usually portrait, so on a 16:9 TV four tall cells show far more of each
+    // face than four short-and-wide ones.
+    <div className="grid h-full max-h-full w-full max-w-7xl grid-cols-2 grid-rows-2 gap-3 xl:grid-cols-4 xl:grid-rows-1">
       {question.choices.map((choice, i) => (
-        <div key={i} className="relative overflow-hidden rounded-3xl border border-white/10">
-          <StorageImage storageId={choice.imageId} className="h-full w-full object-cover" alt="" />
+        <div
+          key={i}
+          className="relative min-h-0 overflow-hidden rounded-3xl border border-white/10 bg-white/[0.06]"
+        >
+          <StorageImage
+            storageId={choice.imageId}
+            fit="contain"
+            className="h-full w-full"
+            alt=""
+          />
           <span
-            className="absolute left-3 top-3 flex h-9 w-9 items-center justify-center rounded-full font-display text-sm font-black shadow"
-            style={{ backgroundColor: withAlpha(CHOICE_ACCENTS[i]!, 0.9), color: "#08061a" }}
+            className="absolute left-3 top-3 flex h-9 w-9 items-center justify-center rounded-full font-display text-sm font-black shadow-lg"
+            style={{ backgroundColor: withAlpha(CHOICE_ACCENTS[i]!, 0.95), color: "#08061a" }}
           >
             {CHOICE_LABELS[i]}
           </span>
           {question.answerKind === "image_text_choice" && choice.text && (
-            <div className="absolute inset-x-0 bottom-0 flex items-end bg-gradient-to-t from-black/85 to-transparent p-3 pt-10">
+            <div className="absolute inset-x-0 bottom-0 flex items-end bg-gradient-to-t from-black/90 to-transparent p-3 pt-10">
               <span className="line-clamp-2 font-display text-lg font-bold text-white">{choice.text}</span>
             </div>
           )}

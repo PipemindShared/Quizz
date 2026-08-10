@@ -82,7 +82,8 @@ function ChoiceCard({
           <StorageImage
             storageId={choice.imageId}
             alt={choice.text ?? letter}
-            className="h-14 w-14 shrink-0 rounded-xl"
+            fit="contain"
+            className="h-16 w-16 shrink-0 rounded-xl bg-white/[0.06]"
           />
         )}
         {choice.text && (
@@ -282,7 +283,7 @@ export default function HostReveal({ question, reveal }: HostRevealProps) {
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: -24, scale: 0.98 }}
       transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-      className="relative flex h-dvh w-full flex-col items-center overflow-x-hidden overflow-y-auto px-6 pt-10 pb-24 sm:px-10"
+      className="relative flex w-full flex-col items-center overflow-x-hidden px-6 pt-8 pb-24 sm:px-10"
     >
       <div className="flex w-full max-w-4xl flex-col items-center gap-2 text-center">
         <span className="glass-soft px-4 py-1 font-display text-xs font-semibold uppercase tracking-[0.2em] text-white/60">
@@ -301,7 +302,7 @@ export default function HostReveal({ question, reveal }: HostRevealProps) {
         </div>
       </div>
 
-      <div className="mt-8 w-full max-w-4xl">
+      <div className="mt-6 w-full max-w-4xl">
         {isTextInput ? (
           <div className="flex flex-col gap-3">
             {reveal.correctText && (
@@ -356,7 +357,7 @@ export default function HostReveal({ question, reveal }: HostRevealProps) {
         )}
       </div>
 
-      <div className="mt-10 flex w-full flex-col items-center">
+      <div className="mt-6 flex w-full flex-col items-center">
         {reveal.bestPlayer ? (
           <BestPlayerCard bestPlayer={reveal.bestPlayer} />
         ) : (

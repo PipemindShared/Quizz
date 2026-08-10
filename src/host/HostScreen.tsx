@@ -7,6 +7,7 @@ import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import type { GameStatus } from "./types";
 import Backdrop from "../components/Backdrop";
+import FitToScreen from "./FitToScreen";
 import HostLobby from "./HostLobby";
 import HostQuestion from "./HostQuestion";
 import HostReveal from "./HostReveal";
@@ -180,15 +181,16 @@ export default function HostScreen() {
   switch (state.game.status) {
     case "lobby":
       content = (
-        <HostLobby
-          key={phaseKey}
-          quiz={state.quiz}
-          code={state.game.code}
-          teams={state.teams}
-          playerCount={state.playerCount}
-          canStart={state.playerCount >= 1}
-          onStart={onStart}
-        />
+        <FitToScreen key={phaseKey}>
+          <HostLobby
+            quiz={state.quiz}
+            code={state.game.code}
+            teams={state.teams}
+            playerCount={state.playerCount}
+            canStart={state.playerCount >= 1}
+            onStart={onStart}
+          />
+        </FitToScreen>
       );
       break;
     case "question":
@@ -208,42 +210,44 @@ export default function HostScreen() {
     case "reveal":
       content =
         state.question && state.reveal ? (
-          <HostReveal key={phaseKey} question={state.question} reveal={state.reveal} />
+          <FitToScreen key={phaseKey}>
+            <HostReveal question={state.question} reveal={state.reveal} />
+          </FitToScreen>
         ) : (
           fallback
         );
       break;
     case "round_results":
       content = state.roundScores ? (
-        <HostRoundResults
-          key={phaseKey}
-          roundScores={state.roundScores}
-          quizName={state.quiz.name}
-        />
+        <FitToScreen key={phaseKey}>
+          <HostRoundResults roundScores={state.roundScores} quizName={state.quiz.name} />
+        </FitToScreen>
       ) : (
         fallback
       );
       break;
     case "leaderboard":
       content = state.standings ? (
-        <HostLeaderboard
-          key={phaseKey}
-          standings={state.standings}
-          isFinal={state.quiz.isFinal}
-          status="leaderboard"
-        />
+        <FitToScreen key={phaseKey}>
+          <HostLeaderboard
+            standings={state.standings}
+            isFinal={state.quiz.isFinal}
+            status="leaderboard"
+          />
+        </FitToScreen>
       ) : (
         fallback
       );
       break;
     case "finished":
       content = state.standings ? (
-        <HostLeaderboard
-          key={phaseKey}
-          standings={state.standings}
-          isFinal={state.quiz.isFinal}
-          status="finished"
-        />
+        <FitToScreen key={phaseKey}>
+          <HostLeaderboard
+            standings={state.standings}
+            isFinal={state.quiz.isFinal}
+            status="finished"
+          />
+        </FitToScreen>
       ) : (
         fallback
       );

@@ -58,7 +58,7 @@ export default function HostLobby({ quiz, code, teams, playerCount, canStart }: 
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: -24, scale: 0.98 }}
       transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-      className="relative flex h-dvh w-full flex-col overflow-x-hidden overflow-y-auto px-6 pt-10 pb-28 sm:px-10 lg:px-16"
+      className="relative flex w-full flex-col overflow-x-hidden px-6 pt-8 pb-28 sm:px-10 lg:px-16"
     >
       {/* Ambient festive glow blobs */}
       <div
@@ -101,7 +101,7 @@ export default function HostLobby({ quiz, code, teams, playerCount, canStart }: 
       </header>
 
       {/* Join panel */}
-      <section className="relative z-10 mt-10 flex flex-col items-center justify-center gap-8 rounded-[2rem] border border-white/10 bg-white/[0.03] p-6 shadow-[0_30px_80px_-30px_rgba(0,0,0,0.8)] sm:p-10 lg:flex-row lg:gap-12">
+      <section className="relative z-10 mt-6 flex flex-col items-center justify-center gap-8 rounded-[2rem] border border-white/10 bg-white/[0.03] p-6 shadow-[0_30px_80px_-30px_rgba(0,0,0,0.8)] sm:p-8 lg:flex-row lg:gap-12">
         <div className="rounded-3xl bg-white p-6 shadow-[0_0_60px_-10px_rgba(124,92,255,0.6)] sm:p-8">
           <QRCodeSVG value={joinUrl} size={240} level="M" className="h-[clamp(160px,22vw,280px)] w-[clamp(160px,22vw,280px)]" />
         </div>
@@ -131,7 +131,7 @@ export default function HostLobby({ quiz, code, teams, playerCount, canStart }: 
       </section>
 
       {/* Team columns */}
-      <section className="relative z-10 mt-10 flex-1">
+      <section className="relative z-10 mt-6">
         {teams.length === 0 ? (
           <p className="text-center text-white/30">No teams yet.</p>
         ) : (

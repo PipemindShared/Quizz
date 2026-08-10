@@ -31,7 +31,7 @@ export default function HostRoundResults({ roundScores, quizName }: HostRoundRes
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: -24, scale: 0.98 }}
       transition={{ duration: shouldReduceMotion ? 0.15 : 0.5, ease: [0.16, 1, 0.3, 1] }}
-      className="relative flex min-h-dvh w-full flex-col items-center overflow-x-hidden overflow-y-auto px-6 pt-10 pb-[96px] sm:px-10"
+      className="relative flex w-full flex-col items-center overflow-x-hidden px-6 pt-8 pb-[96px] sm:px-10"
     >
       {/* Ambient festive glow blobs */}
       <div
@@ -64,7 +64,7 @@ export default function HostRoundResults({ roundScores, quizName }: HostRoundRes
           No teams scored this round.
         </div>
       ) : (
-        <div className="relative z-10 mt-10 flex w-full flex-1 flex-wrap items-end justify-center gap-5">
+        <div className="relative z-10 mt-6 flex w-full flex-wrap items-end justify-center gap-5">
           {roundScores.map((team, index) => {
             const isBest = index === 0;
             const pct = team.score / maxScore;

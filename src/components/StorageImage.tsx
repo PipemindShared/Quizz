@@ -9,6 +9,12 @@ type Props = {
   className?: string;
   /** Rendered while the URL resolves or when there is no image. */
   fallback?: React.ReactNode;
+  /**
+   * How the image fills its box. "contain" shows the whole image (never crops
+   * a face or logo) and is what the host screens use, since they're viewed
+   * from across a room. Defaults to "cover".
+   */
+  fit?: "cover" | "contain";
 };
 
 /**
@@ -20,6 +26,7 @@ export default function StorageImage({
   alt = "",
   className,
   fallback = null,
+  fit = "cover",
 }: Props) {
   const url = useQuery(
     api.files.getUrl,
@@ -44,7 +51,7 @@ export default function StorageImage({
       src={url}
       alt={alt}
       loading="lazy"
-      className={cn("object-cover", className)}
+      className={cn(fit === "contain" ? "object-contain" : "object-cover", className)}
     />
   );
 }

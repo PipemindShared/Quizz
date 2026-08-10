@@ -133,7 +133,7 @@ function ChampionCard({
       initial={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.85, y: -30 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
       transition={{ type: "spring", stiffness: 220, damping: 20, delay: 0.1 }}
-      className="relative mb-8 w-full max-w-3xl overflow-hidden rounded-[2rem] border border-white/15 px-6 py-8 text-center sm:px-10 sm:py-10"
+      className="relative mb-6 w-full max-w-3xl overflow-hidden rounded-[2rem] border border-white/15 px-6 py-6 text-center sm:px-10 sm:py-8"
       style={{
         background: `linear-gradient(180deg, ${champion.color}22, rgba(255,255,255,0.03) 60%)`,
         boxShadow: `0 40px 90px -40px ${champion.color}88, 0 0 0 1px ${champion.color}33 inset`,
@@ -216,7 +216,7 @@ export default function HostLeaderboard({ standings, isFinal, status }: HostLead
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.35 }}
-      className="flex h-dvh w-full flex-col items-center overflow-y-auto px-6 pb-[96px] pt-10 sm:px-10"
+      className="flex w-full flex-col items-center px-6 pb-[96px] pt-8 sm:px-10"
     >
       <div className="mb-6 flex flex-col items-center gap-2 text-center">
         {isFinal ? (
