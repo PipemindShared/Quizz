@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useQuery, useMutation } from "convex/react";
 import { ConvexError } from "convex/values";
-import { LoaderCircle, Plus, Trash2, X } from "lucide-react";
+import { LoaderCircle, Play, Plus, RotateCcw, Trash2, X } from "lucide-react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import Backdrop from "../components/Backdrop";
@@ -16,13 +16,16 @@ function ConfirmButton({
   busy,
   label = "Delete",
   className = "btn-ghost text-siren",
+  icon = Trash2,
 }: {
   onConfirm: () => void;
   busy?: boolean;
   label?: string;
   className?: string;
+  icon?: typeof Trash2;
 }) {
   const [armed, setArmed] = useState(false);
+  const Icon = icon;
   if (busy) {
     return (
       <button className={className} disabled>
@@ -33,7 +36,7 @@ function ConfirmButton({
   if (!armed) {
     return (
       <button className={className} onClick={() => setArmed(true)}>
-        <Trash2 className="h-4 w-4" />
+        <Icon className="h-4 w-4" />
         {label}
       </button>
     );
@@ -120,10 +123,14 @@ export default function AdminHome() {
   const createT = useMutation(api.tournaments.create);
   const updateT = useMutation(api.tournaments.update);
   const removeT = useMutation(api.tournaments.remove);
+  const resetT = useMutation(api.tournaments.reset);
+  const createGame = useMutation(api.games.create);
+  const navigate = useNavigate();
 
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [busyId, setBusyId] = useState<Id<"tournaments"> | null>(null);
+  const [startBusyId, setStartBusyId] = useState<Id<"tournaments"> | null>(null);
   const [newName, setNewName] = useState("");
 
   async function handleCreate() {
@@ -158,6 +165,40 @@ export default function AdminHome() {
     setBusyId(id);
     try {
       await removeT({ tournamentId: id });
+    } catch (e) {
+      setError(errMsg(e));
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function handleStart(
+    id: Id<"tournaments">,
+    activeGameId: Id<"games"> | null,
+    nextQuizId: Id<"quizzes"> | null,
+  ) {
+    if (activeGameId) {
+      navigate(`/host/${activeGameId}`);
+      return;
+    }
+    if (!nextQuizId) return;
+    setError(null);
+    setStartBusyId(id);
+    try {
+      const { gameId } = await createGame({ quizId: nextQuizId });
+      navigate(`/host/${gameId}`);
+    } catch (e) {
+      setError(errMsg(e));
+    } finally {
+      setStartBusyId(null);
+    }
+  }
+
+  async function handleReset(id: Id<"tournaments">) {
+    setError(null);
+    setBusyId(id);
+    try {
+      await resetT({ tournamentId: id });
     } catch (e) {
       setError(errMsg(e));
     } finally {
@@ -260,14 +301,46 @@ export default function AdminHome() {
                   )}
                 </div>
 
+                <button
+                  className="btn-primary w-full"
+                  disabled={
+                    (!t.activeGameId && (!t.nextQuizId || t.teamCount < 2)) ||
+                    startBusyId === t._id
+                  }
+                  title={
+                    !t.activeGameId && t.teamCount < 2
+                      ? "Add at least 2 teams to start"
+                      : !t.activeGameId && !t.nextQuizId
+                        ? "No quiz left to play"
+                        : undefined
+                  }
+                  onClick={() => handleStart(t._id, t.activeGameId, t.nextQuizId)}
+                >
+                  {startBusyId === t._id ? (
+                    <LoaderCircle className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Play className="h-4 w-4" />
+                  )}
+                  {t.activeGameId ? "Continue" : "Start"}
+                </button>
+
                 <div className="mt-2 flex items-center justify-between">
                   <Link to={`/admin/t/${t._id}`} className="btn-ghost">
-                    Open
+                    Manage
                   </Link>
-                  <ConfirmButton
-                    busy={busyId === t._id}
-                    onConfirm={() => handleDelete(t._id)}
-                  />
+                  <div className="flex items-center gap-2">
+                    <ConfirmButton
+                      busy={busyId === t._id}
+                      onConfirm={() => handleReset(t._id)}
+                      label="Reset"
+                      icon={RotateCcw}
+                      className="btn-ghost text-sun"
+                    />
+                    <ConfirmButton
+                      busy={busyId === t._id}
+                      onConfirm={() => handleDelete(t._id)}
+                    />
+                  </div>
                 </div>
               </div>
             ))}
