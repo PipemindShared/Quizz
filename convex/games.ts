@@ -365,6 +365,11 @@ export const getHostState = query({
         isFinal: quiz.isFinal,
         questionCount: questions.length,
       },
+      /**
+       * The server's clock, so each client can subtract its own drift instead of
+       * comparing server timestamps against a device clock that may be wrong.
+       */
+      serverNow: Date.now(),
       tournament: { _id: tournament._id, name: tournament.name },
       teams,
       playerCount: players.length,

@@ -11,6 +11,7 @@ export type HostQuestionProps = {
   game: HostState["game"];
   answeredCount: number;
   playerCount: number;
+  serverNow: number;
   onAutoClose: () => void;
 };
 
@@ -38,9 +39,10 @@ export default function HostQuestion({
   game,
   answeredCount,
   playerCount,
+  serverNow,
   onAutoClose,
 }: HostQuestionProps) {
-  const { secondsLeft, ratio, expired } = useCountdown(game.questionStartedAt, game.questionEndsAt);
+  const { secondsLeft, ratio, expired } = useCountdown(game.questionStartedAt, game.questionEndsAt, serverNow);
   const reducedMotion = useReducedMotion();
   const diff = DIFFICULTY[question.points] ?? DIFFICULTY[2]!;
   const color = countdownColor(ratio);

@@ -26,6 +26,7 @@ export default function PlayerQuestion(props: {
   myTeamColor: string;
   questionStartedAt: number | undefined;
   questionEndsAt: number | undefined;
+  serverNow: number;
 }) {
   const {
     playerId,
@@ -36,6 +37,7 @@ export default function PlayerQuestion(props: {
     myTeamColor,
     questionStartedAt,
     questionEndsAt,
+    serverNow,
   } = props;
 
   const submitAnswer = useMutation(api.play.submitAnswer);
@@ -43,6 +45,7 @@ export default function PlayerQuestion(props: {
   const { secondsLeft, ratio, expired } = useCountdown(
     questionStartedAt,
     questionEndsAt,
+    serverNow,
   );
 
   const [locking, setLocking] = useState(false);

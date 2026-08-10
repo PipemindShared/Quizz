@@ -2,13 +2,14 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useMutation, useQuery } from "convex/react";
 import { ConvexError } from "convex/values";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { LoaderCircle } from "lucide-react";
 import { api } from "../../convex/_generated/api";
 import type { PlayerSession } from "../lib/session";
 import { clearSession, loadSession, saveSession } from "../lib/session";
 import type { PlayTeam } from "./types";
 import Backdrop from "../components/Backdrop";
+import OfflineBanner from "./OfflineBanner";
 import PlayerWaiting from "./PlayerWaiting";
 import JoinTeam from "./JoinTeam";
 import JoinName from "./JoinName";
@@ -155,6 +156,7 @@ export default function PlayerApp() {
             myTeamColor={me.teamColor}
             questionStartedAt={state.game.questionStartedAt}
             questionEndsAt={state.game.questionEndsAt}
+            serverNow={state.serverNow}
           />
         );
       }
@@ -191,18 +193,31 @@ export default function PlayerApp() {
     <div className="flex min-h-dvh flex-col">
       <Backdrop variant="calm" tint={tint} />
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col px-4 sm:max-w-lg">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={phaseKey}
-            initial={reduceMotion ? undefined : { opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={reduceMotion ? undefined : { opacity: 0, y: -12 }}
-            transition={{ duration: reduceMotion ? 0.01 : 0.28, ease: "easeOut" }}
-            className="flex flex-1 flex-col"
-          >
-            {content}
-          </motion.div>
-        </AnimatePresence>
+        <OfflineBanner />
+        {/*
+         * Deliberately not wrapped in <AnimatePresence mode="wait">. That mode
+         * holds the incoming phase back until the outgoing one has finished
+         * animating out, and those animations run on requestAnimationFrame,
+         * which the browser pauses while a tab is backgrounded or a phone is
+         * locked. A question opening during that pause would leave the player
+         * looking at the previous question's result until they woke the phone —
+         * by then the question has timed out. The phase a player sees must never
+         * depend on an animation completing.
+         *
+         * Changing `key` remounts on every phase change, so React swaps the
+         * content synchronously. The entrance moves the panel without fading it
+         * in, so even if the frame loop never runs the content is visible rather
+         * than stuck at opacity 0.
+         */}
+        <motion.div
+          key={phaseKey}
+          initial={reduceMotion ? false : { y: 12 }}
+          animate={{ y: 0 }}
+          transition={{ duration: reduceMotion ? 0 : 0.28, ease: "easeOut" }}
+          className="flex flex-1 flex-col"
+        >
+          {content}
+        </motion.div>
       </div>
     </div>
   );

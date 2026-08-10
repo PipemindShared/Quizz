@@ -205,6 +205,7 @@ export default function HostScreen() {
           game={state.game}
           answeredCount={state.answeredCount}
           playerCount={state.answerableCount}
+          serverNow={state.serverNow}
           onAutoClose={onAutoClose}
         />
       ) : (

@@ -210,6 +210,11 @@ export const getPlayState = query({
             totalPoints: myTotalPoints,
           }
         : null,
+      /**
+       * The server's clock, so each client can subtract its own drift instead of
+       * comparing server timestamps against a device clock that may be wrong.
+       */
+      serverNow: Date.now(),
       playerCount: players.length,
       answeredCount,
       /** True while this player waits out a question that opened before they joined. */
