@@ -35,10 +35,41 @@ export default function Backdrop({ variant = "host", tint, className }: Props) {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    // Deliberately 1, not devicePixelRatio: the motes are soft out-of-focus
+    // glows, so rendering them at 2x cost 4x the pixels for a difference nobody
+    // can see. The orbs and all text are DOM, so they stay crisp regardless.
+    const dpr = 1;
     let w = 0;
     let h = 0;
     const count = variant === "host" ? 90 : 36;
+
+    /**
+     * One pre-rendered glow sprite per colour. Building a radial gradient is
+     * expensive, and doing it per mote per frame was ~5,400 gradients/second on
+     * the host variant. The motes are identical soft blobs apart from size and
+     * alpha, so a single sprite per colour can be blitted instead.
+     */
+    const SPRITE_R = 32;
+    const sprites = new Map<string, HTMLCanvasElement>();
+    for (const c of colors) {
+      const sprite = document.createElement("canvas");
+      sprite.width = sprite.height = SPRITE_R * 2;
+      const sctx = sprite.getContext("2d");
+      if (!sctx) continue;
+      const g = sctx.createRadialGradient(
+        SPRITE_R,
+        SPRITE_R,
+        0,
+        SPRITE_R,
+        SPRITE_R,
+        SPRITE_R,
+      );
+      g.addColorStop(0, c);
+      g.addColorStop(1, "transparent");
+      sctx.fillStyle = g;
+      sctx.fillRect(0, 0, sprite.width, sprite.height);
+      sprites.set(c, sprite);
+    }
 
     type Mote = {
       x: number;
@@ -85,14 +116,13 @@ export default function Backdrop({ variant = "host", tint, className }: Props) {
         m.y += m.vy;
         m.x += m.vx;
         if (m.y < -20 || m.x < -20 || m.x > w + 20) Object.assign(m, spawn());
-        const g = ctx.createRadialGradient(m.x, m.y, 0, m.x, m.y, m.r * 4);
-        g.addColorStop(0, m.c);
-        g.addColorStop(1, "transparent");
+        const sprite = sprites.get(m.c);
+        if (!sprite) continue;
+        // The sprite fades to transparent at its own edge, so drawing it at
+        // diameter r*8 reproduces the old gradient's r*4 visible radius.
+        const d = m.r * 8;
         ctx.globalAlpha = m.a;
-        ctx.fillStyle = g;
-        ctx.beginPath();
-        ctx.arc(m.x, m.y, m.r * 4, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.drawImage(sprite, m.x - d / 2, m.y - d / 2, d, d);
       }
       ctx.globalAlpha = 1;
       raf = requestAnimationFrame(draw);
@@ -113,26 +143,31 @@ export default function Backdrop({ variant = "host", tint, className }: Props) {
         className,
       )}
     >
-      {/* Aurora orbs */}
+      {/* Aurora orbs.
+          The blur radius is kept small on purpose: a large-radius blur over a
+          viewport-sized layer is one of the most expensive things a compositor
+          can be asked to do, and these layers are radial gradients that are
+          already soft. Most of the softness comes from the gradient's wide
+          transparent stop, with a little blur left only to hide banding. */}
       <div
-        className="absolute -left-[15%] -top-[20%] h-[70vmax] w-[70vmax] rounded-full opacity-45 blur-[110px] animate-float"
+        className="absolute -left-[15%] -top-[20%] h-[70vmax] w-[70vmax] rounded-full opacity-45 blur-[28px] animate-float motion-reduce:animate-none"
         style={{
-          background: `radial-gradient(circle at 30% 30%, ${colors[0]}, transparent 62%)`,
+          background: `radial-gradient(circle at 30% 30%, ${colors[0]}, transparent 76%)`,
           animationDuration: "13s",
         }}
       />
       <div
-        className="absolute -right-[18%] top-[8%] h-[62vmax] w-[62vmax] rounded-full opacity-40 blur-[120px] animate-float"
+        className="absolute -right-[18%] top-[8%] h-[62vmax] w-[62vmax] rounded-full opacity-40 blur-[28px] animate-float motion-reduce:animate-none"
         style={{
-          background: `radial-gradient(circle at 60% 40%, ${colors[1 % colors.length]}, transparent 62%)`,
+          background: `radial-gradient(circle at 60% 40%, ${colors[1 % colors.length]}, transparent 76%)`,
           animationDuration: "17s",
           animationDelay: "-4s",
         }}
       />
       <div
-        className="absolute bottom-[-25%] left-[20%] h-[58vmax] w-[58vmax] rounded-full opacity-35 blur-[120px] animate-float"
+        className="absolute bottom-[-25%] left-[20%] h-[58vmax] w-[58vmax] rounded-full opacity-35 blur-[28px] animate-float motion-reduce:animate-none"
         style={{
-          background: `radial-gradient(circle at 50% 50%, ${colors[2 % colors.length]}, transparent 60%)`,
+          background: `radial-gradient(circle at 50% 50%, ${colors[2 % colors.length]}, transparent 74%)`,
           animationDuration: "21s",
           animationDelay: "-9s",
         }}
@@ -143,8 +178,11 @@ export default function Backdrop({ variant = "host", tint, className }: Props) {
 
       {/* Vignette + grain */}
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_25%,rgba(4,2,16,0.85)_100%)]" />
+      {/* Grain. No blend mode: mix-blend-* forces an extra full-viewport
+          compositing pass on every frame, because the backdrop underneath it
+          animates. Plain low opacity reads the same at this strength. */}
       <div
-        className="absolute inset-0 opacity-[0.05] mix-blend-overlay"
+        className="absolute inset-0 opacity-[0.04]"
         style={{
           backgroundImage:
             "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E\")",
