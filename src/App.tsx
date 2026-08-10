@@ -5,6 +5,7 @@ import AdminHome from "./admin/AdminHome";
 import TournamentBuilder from "./admin/TournamentBuilder";
 import QuizBuilder from "./admin/QuizBuilder";
 import QuizEditGate from "./admin/QuizEditGate";
+import QuizTest from "./admin/QuizTest";
 import HostScreen from "./host/HostScreen";
 import PlayerApp from "./player/PlayerApp";
 
@@ -41,6 +42,9 @@ export default function App() {
 
       {/* Delegated quiz editing — reached by secret edit link, no passphrase needed */}
       <Route path="/quiz/:quizId/edit/:token" element={<QuizEditGate />} />
+
+      {/* Solo playthrough for testing quiz content — read-only, no passphrase needed */}
+      <Route path="/quiz/:quizId/test" element={<QuizTest />} />
 
       {/* Host big screen */}
       <Route path="/host/:gameId" element={<HostScreen />} />

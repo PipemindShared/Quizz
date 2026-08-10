@@ -7,6 +7,7 @@ import {
   ChevronDown,
   ChevronUp,
   Copy,
+  FlaskConical,
   Link2,
   LoaderCircle,
   Pencil,
@@ -204,6 +205,28 @@ function EditLinkControls({
   );
 }
 
+function TestLinkControls({ quizId }: { quizId: Id<"quizzes"> }) {
+  const [copied, setCopied] = useState(false);
+
+  async function copy() {
+    const url = `${window.location.origin}/quiz/${quizId}/test`;
+    await navigator.clipboard.writeText(url);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  }
+
+  return (
+    <button
+      className="btn-ghost text-xs"
+      onClick={copy}
+      title="Play through the quiz solo to check questions and answers — nothing is recorded"
+    >
+      {copied ? <Check className="h-4 w-4" /> : <FlaskConical className="h-4 w-4" />}
+      {copied ? "Copied" : "Copy quiz test link"}
+    </button>
+  );
+}
+
 export default function QuizBuilder() {
   const { quizId } = useParams() as { quizId: Id<"quizzes"> };
 
@@ -351,8 +374,9 @@ export default function QuizBuilder() {
               Total points: {totalPoints} · Est. runtime: {fmt(runtimeSec)}
             </span>
           </div>
-          <div className="mt-4 border-t border-white/10 pt-4">
+          <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-white/10 pt-4">
             <EditLinkControls quizId={quizId} editToken={quiz.editToken} />
+            <TestLinkControls quizId={quizId} />
           </div>
         </div>
 
