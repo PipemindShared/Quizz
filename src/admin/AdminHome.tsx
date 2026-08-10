@@ -11,55 +11,6 @@ function errMsg(e: unknown): string {
   return e instanceof ConvexError ? (e.data as string) : "Something went wrong";
 }
 
-function ConfirmButton({
-  onConfirm,
-  busy,
-  label = "Delete",
-  className = "btn-ghost text-siren",
-  icon = Trash2,
-}: {
-  onConfirm: () => void;
-  busy?: boolean;
-  label?: string;
-  className?: string;
-  icon?: typeof Trash2;
-}) {
-  const [armed, setArmed] = useState(false);
-  const Icon = icon;
-  if (busy) {
-    return (
-      <button className={className} disabled>
-        <LoaderCircle className="h-4 w-4 animate-spin" />
-      </button>
-    );
-  }
-  if (!armed) {
-    return (
-      <button className={className} onClick={() => setArmed(true)}>
-        <Icon className="h-4 w-4" />
-        {label}
-      </button>
-    );
-  }
-  return (
-    <span className="inline-flex items-center gap-2">
-      <span className="text-xs text-white/60">Sure?</span>
-      <button
-        className="btn-ghost text-siren px-3 py-1.5"
-        onClick={() => {
-          setArmed(false);
-          onConfirm();
-        }}
-      >
-        Yes
-      </button>
-      <button className="btn-ghost px-3 py-1.5" onClick={() => setArmed(false)}>
-        No
-      </button>
-    </span>
-  );
-}
-
 function InlineText({
   value,
   onSave,
@@ -132,6 +83,11 @@ export default function AdminHome() {
   const [busyId, setBusyId] = useState<Id<"tournaments"> | null>(null);
   const [startBusyId, setStartBusyId] = useState<Id<"tournaments"> | null>(null);
   const [newName, setNewName] = useState("");
+  /** Which card is asking for confirmation, and for which action. */
+  const [confirm, setConfirm] = useState<{
+    id: Id<"tournaments">;
+    action: "reset" | "delete";
+  } | null>(null);
 
   async function handleCreate() {
     const name = newName.trim();
@@ -324,24 +280,70 @@ export default function AdminHome() {
                   {t.activeGameId ? "Continue" : "Start"}
                 </button>
 
-                <div className="mt-2 flex items-center justify-between">
-                  <Link to={`/admin/t/${t._id}`} className="btn-ghost">
-                    Manage
-                  </Link>
-                  <div className="flex items-center gap-2">
-                    <ConfirmButton
-                      busy={busyId === t._id}
-                      onConfirm={() => handleReset(t._id)}
-                      label="Reset"
-                      icon={RotateCcw}
-                      className="btn-ghost text-sun"
-                    />
-                    <ConfirmButton
-                      busy={busyId === t._id}
-                      onConfirm={() => handleDelete(t._id)}
-                    />
+                {/* Confirming takes over the whole row rather than expanding
+                    inside it: at three-column width there isn't room for the
+                    actions plus a confirmation, and it also makes clear which
+                    of the two destructive actions is being confirmed. */}
+                {confirm?.id === t._id ? (
+                  <div className="mt-2 flex flex-col gap-2">
+                    <p className="text-xs leading-snug text-white/70">
+                      {confirm.action === "reset"
+                        ? "Remove every team and played game? The quizzes are kept."
+                        : "Delete this tournament, with its teams and quizzes?"}
+                    </p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        className={
+                          confirm.action === "reset"
+                            ? "btn-ghost grow text-sun"
+                            : "btn-ghost grow text-siren"
+                        }
+                        disabled={busyId === t._id}
+                        onClick={() => {
+                          const { action } = confirm;
+                          setConfirm(null);
+                          if (action === "reset") void handleReset(t._id);
+                          else void handleDelete(t._id);
+                        }}
+                      >
+                        {busyId === t._id ? (
+                          <LoaderCircle className="h-4 w-4 animate-spin" />
+                        ) : confirm.action === "reset" ? (
+                          <RotateCcw className="h-4 w-4" />
+                        ) : (
+                          <Trash2 className="h-4 w-4" />
+                        )}
+                        {confirm.action === "reset" ? "Reset" : "Delete"}
+                      </button>
+                      <button
+                        className="btn-ghost grow"
+                        onClick={() => setConfirm(null)}
+                      >
+                        Cancel
+                      </button>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <Link to={`/admin/t/${t._id}`} className="btn-ghost grow">
+                      Manage
+                    </Link>
+                    <button
+                      className="btn-ghost text-sun"
+                      onClick={() => setConfirm({ id: t._id, action: "reset" })}
+                    >
+                      <RotateCcw className="h-4 w-4" />
+                      Reset
+                    </button>
+                    <button
+                      className="btn-ghost text-siren"
+                      onClick={() => setConfirm({ id: t._id, action: "delete" })}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      Delete
+                    </button>
+                  </div>
+                )}
               </div>
             ))}
           </div>

@@ -93,9 +93,16 @@
 @layer base {
   html {
     -webkit-tap-highlight-color: transparent;
+    /* The page background lives on html, not body, on purpose. Backdrop is
+       `fixed inset-0 -z-10`, and a negative z-index paints above the canvas
+       background but below an element's own background box. body is only as
+       tall as its content, so putting bg-ink there painted an opaque box over
+       the top of the Backdrop and left a hard horizontal seam where the
+       content ended. */
+    @apply bg-ink;
   }
   body {
-    @apply bg-ink text-white font-sans antialiased;
+    @apply text-white font-sans antialiased;
     overscroll-behavior-y: none;
   }
   h1,
