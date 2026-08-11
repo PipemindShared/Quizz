@@ -2,14 +2,24 @@ import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useQuery, useMutation } from "convex/react";
 import { ConvexError } from "convex/values";
-import { Check, Link2, LoaderCircle, Plus, Trash2, X } from "lucide-react";
+import {
+  Check,
+  ClipboardPaste,
+  Link2,
+  LoaderCircle,
+  Plus,
+  Trash2,
+  X,
+} from "lucide-react";
 import { api } from "../../convex/_generated/api";
 import type { Doc, Id } from "../../convex/_generated/dataModel";
 import Backdrop from "../components/Backdrop";
 import PresenceBonusSettings from "./PresenceBonusSettings";
+import PasteTeamPanel from "./PasteTeamPanel";
 import ImageUpload from "../components/ImageUpload";
 import TeamBadge from "../components/TeamBadge";
 import { formatScore, TEAM_COLORS } from "../lib/utils";
+import { parseNames } from "../lib/parseNames";
 
 function errMsg(e: unknown): string {
   return e instanceof ConvexError ? (e.data as string) : "Something went wrong";
@@ -187,12 +197,27 @@ function TeamCard({
   const [memberDraft, setMemberDraft] = useState("");
 
   function addMember() {
-    const name = memberDraft.trim();
-    if (!name || team.members.includes(name)) {
+    // Handles a pasted block as well as a single typed name, so the same field
+    // serves both without a mode switch.
+    const { names } = parseNames(memberDraft, team.members);
+    if (names.length === 0) {
       setMemberDraft("");
       return;
     }
-    onUpdate({ members: [...team.members, name] });
+    onUpdate({ members: [...team.members, ...names] });
+    setMemberDraft("");
+  }
+
+  /**
+   * A multi-line paste is committed immediately rather than dumped into the
+   * single-line input, where only the first name would have survived.
+   */
+  function handleMemberPaste(e: React.ClipboardEvent<HTMLInputElement>) {
+    const text = e.clipboardData.getData("text");
+    if (!/[\n\r\t]/.test(text)) return;
+    e.preventDefault();
+    const { names } = parseNames(text, team.members);
+    if (names.length > 0) onUpdate({ members: [...team.members, ...names] });
     setMemberDraft("");
   }
 
@@ -263,9 +288,10 @@ function TeamCard({
         </div>
         <input
           className="field mt-2"
-          placeholder="Add member name"
+          placeholder="Add member, or paste a list"
           value={memberDraft}
           onChange={(e) => setMemberDraft(e.target.value)}
+          onPaste={handleMemberPaste}
           onKeyDown={(e) => {
             if (e.key === "Enter") {
               e.preventDefault();
@@ -302,6 +328,7 @@ export default function TournamentBuilder() {
   const [error, setError] = useState<string | null>(null);
   const [teamBusyId, setTeamBusyId] = useState<Id<"teams"> | null>(null);
   const [addTeamBusy, setAddTeamBusy] = useState(false);
+  const [pastingTeam, setPastingTeam] = useState(false);
   const [quizBusyId, setQuizBusyId] = useState<Id<"quizzes"> | null>(null);
   const [createQuizBusy, setCreateQuizBusy] = useState(false);
   const [startBusyId, setStartBusyId] = useState<Id<"quizzes"> | null>(null);
@@ -383,6 +410,25 @@ export default function TournamentBuilder() {
         color: TEAM_COLORS[teams.length % TEAM_COLORS.length]!,
         members: [],
       });
+    } catch (e) {
+      setError(errMsg(e));
+    } finally {
+      setAddTeamBusy(false);
+    }
+  }
+
+  async function handlePasteTeam(name: string, members: string[]) {
+    if (!teams || teams.length >= 10) return;
+    setError(null);
+    setAddTeamBusy(true);
+    try {
+      await createTeam({
+        tournamentId,
+        name,
+        color: TEAM_COLORS[teams.length % TEAM_COLORS.length]!,
+        members,
+      });
+      setPastingTeam(false);
     } catch (e) {
       setError(errMsg(e));
     } finally {
@@ -511,6 +557,15 @@ export default function TournamentBuilder() {
               />
             ))}
 
+            {pastingTeam && teams.length < 10 && (
+              <PasteTeamPanel
+                defaultName={`Team ${teams.length + 1}`}
+                busy={addTeamBusy}
+                onCancel={() => setPastingTeam(false)}
+                onCreate={(name, members) => void handlePasteTeam(name, members)}
+              />
+            )}
+
             {teams.length >= 10 ? (
               <button
                 disabled
@@ -520,18 +575,28 @@ export default function TournamentBuilder() {
                 <span className="text-sm">Maximum of 10 teams</span>
               </button>
             ) : (
-              <button
-                onClick={handleAddTeam}
-                disabled={addTeamBusy}
-                className="glass-soft flex min-h-[10rem] flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-white/20 p-5 text-center transition hover:border-neon hover:bg-neon/5"
-              >
-                {addTeamBusy ? (
-                  <LoaderCircle className="h-6 w-6 animate-spin" />
-                ) : (
-                  <Plus className="h-6 w-6" />
-                )}
-                <span className="text-sm text-white/70">Add team</span>
-              </button>
+              <div className="flex min-h-[10rem] flex-col gap-2">
+                <button
+                  onClick={handleAddTeam}
+                  disabled={addTeamBusy}
+                  className="glass-soft flex flex-1 flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-white/20 p-5 text-center transition hover:border-neon hover:bg-neon/5"
+                >
+                  {addTeamBusy ? (
+                    <LoaderCircle className="h-6 w-6 animate-spin" />
+                  ) : (
+                    <Plus className="h-6 w-6" />
+                  )}
+                  <span className="text-sm text-white/70">Add team</span>
+                </button>
+                <button
+                  onClick={() => setPastingTeam(true)}
+                  disabled={addTeamBusy}
+                  className="glass-soft flex flex-col items-center justify-center gap-1.5 rounded-2xl border border-dashed border-white/20 p-4 text-center transition hover:border-neon hover:bg-neon/5"
+                >
+                  <ClipboardPaste className="h-5 w-5" />
+                  <span className="text-xs text-white/70">Paste a team</span>
+                </button>
+              </div>
             )}
           </div>
         </section>
