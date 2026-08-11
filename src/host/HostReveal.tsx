@@ -5,7 +5,7 @@ import StorageImage from "../components/StorageImage";
 import TeamBadge from "../components/TeamBadge";
 import { cn, seconds } from "../lib/utils";
 import { burst } from "../lib/celebrate";
-import { Check, X, Sparkles, Star, Trophy } from "lucide-react";
+import { Check, Lightbulb, Sparkles, Star, Trophy, X } from "lucide-react";
 
 export type HostRevealProps = {
   question: NonNullable<HostState["question"]>;
@@ -356,6 +356,23 @@ export default function HostReveal({ question, reveal }: HostRevealProps) {
           </div>
         )}
       </div>
+
+      {reveal.explanation && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2, duration: 0.4 }}
+          className="glass-soft mt-5 w-full max-w-4xl border-l-4 border-l-sky px-5 py-4"
+        >
+          <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.2em] text-sky">
+            <Lightbulb className="h-3.5 w-3.5" />
+            Why
+          </div>
+          <p className="mt-1.5 text-balance text-lg leading-snug text-white/85 sm:text-xl">
+            {reveal.explanation}
+          </p>
+        </motion.div>
+      )}
 
       <div className="mt-6 flex w-full flex-col items-center">
         {reveal.bestPlayer ? (

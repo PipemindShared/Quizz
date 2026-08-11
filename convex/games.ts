@@ -339,6 +339,8 @@ export const getHostState = query({
       reveal = {
         correctChoice: currentQuestion.correctChoice,
         correctText: currentQuestion.correctText,
+        /** Only ever sent during reveal — it usually gives the answer away. */
+        explanation: currentQuestion.explanation,
         distribution,
         textAnswers,
         correctCount: currentAnswers.filter((a) => a.correct).length,

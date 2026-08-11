@@ -1,9 +1,9 @@
 import { useEffect, useRef } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { CircleCheck, CircleX, Sparkles, Zap } from "lucide-react";
+import { CircleCheck, CircleX, Lightbulb, Sparkles, Zap } from "lucide-react";
 import type { MyAnswer, PlayQuestion, Reveal } from "./types";
 import { burst } from "../lib/celebrate";
-import { cn } from "../lib/utils";
+import { cn, formatScore } from "../lib/utils";
 
 export default function PlayerReveal(props: {
   question: PlayQuestion;
@@ -114,8 +114,20 @@ export default function PlayerReveal(props: {
         ) : null}
       </motion.div>
 
+      {reveal.explanation && (
+        <div className="glass-soft mt-4 border-l-4 border-l-sky px-4 py-3">
+          <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-sky">
+            <Lightbulb className="h-3 w-3" />
+            Why
+          </div>
+          <p className="mt-1 text-balance text-sm leading-snug text-white/80">
+            {reveal.explanation}
+          </p>
+        </div>
+      )}
+
       <div className="mt-4 text-center font-display text-sm font-semibold text-white/50">
-        Your total: {totalPoints} pts
+        Your total: {formatScore(totalPoints)} pts
       </div>
     </div>
   );

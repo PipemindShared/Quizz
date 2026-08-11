@@ -74,6 +74,8 @@ export type BestPlayer = {
 export type Reveal = {
   correctChoice?: number;
   correctText?: string;
+  /** Author's note on why — only sent during reveal. */
+  explanation?: string;
   myCorrect: boolean;
   myPoints: number;
   distribution: { choiceIndex: number; count: number }[];

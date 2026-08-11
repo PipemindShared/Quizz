@@ -85,6 +85,8 @@ export type HostBestPlayer = {
 export type HostReveal = {
   correctChoice?: number;
   correctText?: string;
+  /** Author's note on why — only sent during reveal. */
+  explanation?: string;
   /** one entry per choice, index-aligned; empty for text_input */
   distribution: HostRevealDistribution[];
   /** for text_input: what people typed, most common first */

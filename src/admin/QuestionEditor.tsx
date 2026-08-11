@@ -66,6 +66,7 @@ export default function QuestionEditor({ quizId, question, onDone }: Props) {
   const [caseSensitive, setCaseSensitive] = useState<boolean>(
     question?.caseSensitive ?? false,
   );
+  const [explanation, setExplanation] = useState(question?.explanation ?? "");
 
   const [points, setPoints] = useState<number>(question?.points ?? 2);
   const [timeLimit, setTimeLimit] = useState<number>(question?.timeLimit ?? 10);
@@ -116,6 +117,7 @@ export default function QuestionEditor({ quizId, question, onDone }: Props) {
       prompt: prompt.trim(),
       promptImageId: isEdit ? (promptImageId ?? null) : promptImageId,
       answerKind,
+      explanation: explanation.trim(),
       points,
       timeLimit,
     };
@@ -343,6 +345,21 @@ export default function QuestionEditor({ quizId, question, onDone }: Props) {
               );
             })}
           </div>
+        </div>
+
+        <div>
+          <label className="label">Explanation (optional)</label>
+          <textarea
+            className="field"
+            rows={2}
+            value={explanation}
+            onChange={(e) => setExplanation(e.target.value)}
+            placeholder="Ottawa was chosen as a compromise between Toronto and Montreal."
+          />
+          <p className="mt-1 text-[11px] text-white/40">
+            Shown to everyone once the answer is revealed — never while the question
+            is open.
+          </p>
         </div>
 
         <div>

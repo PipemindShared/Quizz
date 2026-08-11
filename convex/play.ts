@@ -134,6 +134,8 @@ export const getPlayState = query({
       reveal = {
         correctChoice: currentQuestion.correctChoice,
         correctText: currentQuestion.correctText,
+        /** Only ever sent during reveal — it usually gives the answer away. */
+        explanation: currentQuestion.explanation,
         myCorrect: mine?.correct ?? false,
         myPoints: mine?.points ?? 0,
         distribution,

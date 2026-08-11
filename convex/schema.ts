@@ -118,6 +118,12 @@ export default defineSchema({
     acceptedAnswers: v.optional(v.array(v.string())),
     /** text_input only: require matching letter case (default false) */
     caseSensitive: v.optional(v.boolean()),
+    /**
+     * Optional note shown once the answer is revealed — the "why". Deliberately
+     * only ever sent to clients during the reveal phase, since it usually gives
+     * the answer away.
+     */
+    explanation: v.optional(v.string()),
     /** difficulty: 1 easy, 2 normal, 3 hard */
     points: v.number(),
     /** seconds allowed to answer (default 20) */

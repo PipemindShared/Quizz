@@ -296,6 +296,11 @@ function ResultPanel({
       {question.answerKind === "text_input" && text && (
         <p className="text-xs text-white/40">You typed &ldquo;{text}&rdquo;</p>
       )}
+      {question.explanation && (
+        <p className="max-w-xs text-balance text-xs leading-snug text-sky">
+          {question.explanation}
+        </p>
+      )}
       {question.answerKind !== "text_input" && choiceIndex !== null && (
         <p className="text-xs text-white/40">
           You picked &ldquo;{question.choices[choiceIndex]?.text ?? String.fromCharCode(65 + choiceIndex)}&rdquo;
