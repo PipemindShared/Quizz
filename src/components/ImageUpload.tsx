@@ -5,6 +5,7 @@ import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import StorageImage from "./StorageImage";
 import { cn } from "../lib/utils";
+import { compressImage, formatBytes, MAX_EDGE } from "../lib/compressImage";
 
 type Props = {
   value?: Id<"_storage"> | null;
@@ -13,6 +14,11 @@ type Props = {
   /** Square for team icons, wide for question images. */
   shape?: "square" | "wide";
   className?: string;
+  /**
+   * Longest edge kept after downscaling. Defaults by shape — badges need far
+   * fewer pixels than a question image shown on a TV.
+   */
+  maxEdge?: number;
 };
 
 /** Click-or-drop image picker that uploads straight into Convex storage. */
@@ -22,12 +28,14 @@ export default function ImageUpload({
   label = "Upload image",
   shape = "wide",
   className,
+  maxEdge,
 }: Props) {
   const generateUploadUrl = useMutation(api.files.generateUploadUrl);
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState<string | null>(null);
 
   async function upload(file: File) {
     if (!file.type.startsWith("image/")) {
@@ -35,17 +43,28 @@ export default function ImageUpload({
       return;
     }
     setError(null);
+    setSaved(null);
     setBusy(true);
     try {
+      // Shrink first: authors upload straight from a phone, and every player
+      // downloads whatever ends up in storage.
+      const limit = maxEdge ?? (shape === "square" ? MAX_EDGE.icon : MAX_EDGE.question);
+      const image = await compressImage(file, limit);
+
       const url = await generateUploadUrl({});
       const res = await fetch(url, {
         method: "POST",
-        headers: { "Content-Type": file.type },
-        body: file,
+        headers: { "Content-Type": image.contentType },
+        body: image.blob,
       });
       if (!res.ok) throw new Error(`Upload failed (${res.status})`);
       const { storageId } = (await res.json()) as { storageId: Id<"_storage"> };
       onChange(storageId);
+      setSaved(
+        image.recompressed
+          ? `${formatBytes(image.originalBytes)} → ${formatBytes(image.bytes)} · ${image.width}×${image.height}`
+          : `${formatBytes(image.bytes)} · already small enough`,
+      );
     } catch (e) {
       setError(e instanceof Error ? e.message : "Upload failed");
     } finally {
@@ -84,7 +103,7 @@ export default function ImageUpload({
               <ImagePlus className="h-6 w-6" />
             )}
             <span className="font-display text-xs uppercase tracking-widest">
-              {busy ? "Uploading…" : label}
+              {busy ? "Shrinking & uploading…" : label}
             </span>
           </div>
         )}
@@ -121,6 +140,9 @@ export default function ImageUpload({
         }}
       />
       {error && <p className="mt-1.5 text-xs text-siren">{error}</p>}
+      {saved && !error && (
+        <p className="mt-1.5 text-[11px] tabular-nums text-white/40">{saved}</p>
+      )}
     </div>
   );
 }
