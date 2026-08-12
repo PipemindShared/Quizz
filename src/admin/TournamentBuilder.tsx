@@ -20,6 +20,7 @@ import type { Doc, Id } from "../../convex/_generated/dataModel";
 import Backdrop from "../components/Backdrop";
 import PresenceBonusSettings from "./PresenceBonusSettings";
 import PasteTeamPanel from "./PasteTeamPanel";
+import FinalQuizWarning from "./FinalQuizWarning";
 import ImageUpload from "../components/ImageUpload";
 import TeamBadge from "../components/TeamBadge";
 import { cn, formatScore, TEAM_COLORS } from "../lib/utils";
@@ -341,6 +342,7 @@ export default function TournamentBuilder() {
   const [teamBusyId, setTeamBusyId] = useState<Id<"teams"> | null>(null);
   const [addTeamBusy, setAddTeamBusy] = useState(false);
   const [pastingTeam, setPastingTeam] = useState(false);
+  const [confirmFinalId, setConfirmFinalId] = useState<Id<"quizzes"> | null>(null);
   const [quizBusyId, setQuizBusyId] = useState<Id<"quizzes"> | null>(null);
   const [createQuizBusy, setCreateQuizBusy] = useState(false);
   const [startBusyId, setStartBusyId] = useState<Id<"quizzes"> | null>(null);
@@ -714,13 +716,30 @@ export default function TournamentBuilder() {
                           type="checkbox"
                           checked={q.isFinal}
                           disabled={quizBusyId === q._id}
-                          onChange={(e) =>
-                            handleQuizUpdate(q._id, { isFinal: e.target.checked })
-                          }
+                          onChange={(e) => {
+                            // Turning it ON is consequential, so it asks first.
+                            // Turning it off ends nothing and applies straight away.
+                            if (e.target.checked) setConfirmFinalId(q._id);
+                            else handleQuizUpdate(q._id, { isFinal: false });
+                          }}
                         />
                         Final quiz of the tournament
                       </label>
                     </div>
+
+                    {confirmFinalId === q._id && (
+                      <FinalQuizWarning
+                        currentFinalName={
+                          quizzes.find((o) => o.isFinal && o._id !== q._id)?.name
+                        }
+                        busy={quizBusyId === q._id}
+                        onConfirm={() => {
+                          setConfirmFinalId(null);
+                          handleQuizUpdate(q._id, { isFinal: true });
+                        }}
+                        onCancel={() => setConfirmFinalId(null)}
+                      />
+                    )}
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2 border-t border-white/10 pt-3">

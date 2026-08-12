@@ -20,6 +20,7 @@ import { api } from "../../convex/_generated/api";
 import type { Doc, Id } from "../../convex/_generated/dataModel";
 import Backdrop from "../components/Backdrop";
 import { ANSWER_KIND_LABEL, DIFFICULTY, formatScore, maxQuestionPoints } from "../lib/utils";
+import FinalQuizWarning from "./FinalQuizWarning";
 import QuestionEditor from "./QuestionEditor";
 
 function errMsg(e: unknown): string {
@@ -242,6 +243,7 @@ export default function QuizBuilder() {
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<Id<"questions"> | null>(null);
+  const [confirmFinal, setConfirmFinal] = useState(false);
 
   if (quiz === undefined || questions === undefined) {
     return (
@@ -364,7 +366,11 @@ export default function QuizBuilder() {
               <input
                 type="checkbox"
                 checked={quiz.isFinal}
-                onChange={(e) => void toggleFinal(e.target.checked)}
+                onChange={(e) => {
+                  // Asks before turning it on; turning it off ends nothing.
+                  if (e.target.checked) setConfirmFinal(true);
+                  else void toggleFinal(false);
+                }}
               />
               Final quiz
             </label>
@@ -375,6 +381,18 @@ export default function QuizBuilder() {
               Max points: {formatScore(totalPoints)} · Est. runtime: {fmt(runtimeSec)}
             </span>
           </div>
+          {confirmFinal && (
+            <div className="mt-3">
+              <FinalQuizWarning
+                onConfirm={() => {
+                  setConfirmFinal(false);
+                  void toggleFinal(true);
+                }}
+                onCancel={() => setConfirmFinal(false)}
+              />
+            </div>
+          )}
+
           <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-white/10 pt-4">
             <EditLinkControls quizId={quizId} editToken={quiz.editToken} />
             <TestLinkControls quizId={quizId} />

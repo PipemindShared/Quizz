@@ -69,7 +69,7 @@ export default function QuestionEditor({ quizId, question, onDone }: Props) {
   const [explanation, setExplanation] = useState(question?.explanation ?? "");
 
   const [points, setPoints] = useState<number>(question?.points ?? 2);
-  const [timeLimit, setTimeLimit] = useState<number>(question?.timeLimit ?? 10);
+  const [timeLimit, setTimeLimit] = useState<number>(question?.timeLimit ?? 20);
 
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
