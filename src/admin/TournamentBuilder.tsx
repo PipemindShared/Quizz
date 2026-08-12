@@ -5,8 +5,11 @@ import { ConvexError } from "convex/values";
 import {
   Check,
   ClipboardPaste,
+  FlaskConical,
   Link2,
   LoaderCircle,
+  Pencil,
+  Play,
   Plus,
   Trash2,
   X,
@@ -18,7 +21,7 @@ import PresenceBonusSettings from "./PresenceBonusSettings";
 import PasteTeamPanel from "./PasteTeamPanel";
 import ImageUpload from "../components/ImageUpload";
 import TeamBadge from "../components/TeamBadge";
-import { formatScore, TEAM_COLORS } from "../lib/utils";
+import { cn, formatScore, TEAM_COLORS } from "../lib/utils";
 import { parseNames } from "../lib/parseNames";
 
 function errMsg(e: unknown): string {
@@ -638,72 +641,112 @@ export default function TournamentBuilder() {
                     ? "Add at least 2 teams"
                     : null;
               return (
-                <div key={q._id} className="glass flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex min-w-0 flex-1 items-center gap-3">
-                    <InlineText
-                      value={q.name}
-                      onSave={(name) => handleQuizUpdate(q._id, { name })}
-                      className="field font-display text-base font-bold"
-                      placeholder="Quiz name"
-                    />
-                    {q.isFinal && (
-                      <span className="shrink-0 rounded-full px-2.5 py-1 text-xs text-sun">
-                        Final
+                // Two tiers: what the quiz *is* on top, what you can *do* with
+                // it underneath. Cramming the name, the stats, the final toggle
+                // and five buttons onto one line left the name — the thing you
+                // scan for — as the smallest element on the row.
+                <div key={q._id} className="glass flex flex-col gap-3 p-4">
+                  <div className="flex flex-col gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <InlineText
+                        value={q.name}
+                        onSave={(name) => handleQuizUpdate(q._id, { name })}
+                        className="field min-w-0 flex-1 font-display text-xl font-bold sm:text-2xl"
+                        placeholder="Quiz name"
+                      />
+                      {q.isFinal && (
+                        <span className="shrink-0 rounded-full bg-sun/15 px-3 py-1 font-display text-xs font-bold uppercase tracking-wide text-sun">
+                          Final
+                        </span>
+                      )}
+                      <span
+                        className={cn(
+                          "shrink-0 rounded-full px-3 py-1 font-display text-xs font-bold uppercase tracking-wide",
+                          !q.lastGameId
+                            ? "bg-white/5 text-white/40"
+                            : q.lastGameStatus === "finished"
+                              ? "bg-mint/15 text-mint"
+                              : "bg-neon/20 text-neon-2",
+                        )}
+                      >
+                        {!q.lastGameId
+                          ? "Not played"
+                          : q.lastGameStatus === "finished"
+                            ? "Played"
+                            : "Live now"}
                       </span>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-white/55">
+                      <span>
+                        <span className="font-semibold text-white/80">{q.questionCount}</span>{" "}
+                        {q.questionCount === 1 ? "question" : "questions"}
+                      </span>
+                      <span>
+                        <span className="font-semibold text-white/80">
+                          {formatScore(q.totalPoints * 100)}
+                        </span>{" "}
+                        points
+                      </span>
+                      <label className="inline-flex cursor-pointer items-center gap-2 text-white/55">
+                        <input
+                          type="checkbox"
+                          checked={q.isFinal}
+                          disabled={quizBusyId === q._id}
+                          onChange={(e) =>
+                            handleQuizUpdate(q._id, { isFinal: e.target.checked })
+                          }
+                        />
+                        Final quiz of the tournament
+                      </label>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2 border-t border-white/10 pt-3">
+                    <button
+                      className="btn-sun"
+                      disabled={!canStart || startBusyId === q._id}
+                      title={reason ?? undefined}
+                      onClick={() => handleStartGame(q._id)}
+                    >
+                      {startBusyId === q._id ? (
+                        <LoaderCircle className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Play className="h-4 w-4" />
+                      )}
+                      Start live game
+                    </button>
+
+                    {q.lastGameId && (
+                      <Link to={`/host/${q.lastGameId}`} className="btn-ghost">
+                        {q.lastGameStatus === "finished" ? "View results" : "Resume"}
+                      </Link>
                     )}
-                  </div>
 
-                  <div className="shrink-0 text-sm text-white/60">
-                    {q.questionCount} questions · {formatScore(q.totalPoints * 100)} pts
-                  </div>
+                    {/* Solo play-through: no game, no players, nothing recorded. */}
+                    <Link
+                      to={`/quiz/${q._id}/test`}
+                      target="_blank"
+                      className="btn-ghost"
+                      title="Play it through yourself — nothing is recorded"
+                    >
+                      <FlaskConical className="h-4 w-4" />
+                      Test
+                    </Link>
 
-                  <label className="flex shrink-0 items-center gap-2 text-sm text-white/70">
-                    <input
-                      type="checkbox"
-                      checked={q.isFinal}
-                      disabled={quizBusyId === q._id}
-                      onChange={(e) =>
-                        handleQuizUpdate(q._id, { isFinal: e.target.checked })
-                      }
-                    />
-                    Final
-                  </label>
-
-                  <div className="flex shrink-0 flex-wrap items-center gap-2">
                     <Link to={`/admin/quiz/${q._id}`} className="btn-ghost">
+                      <Pencil className="h-4 w-4" />
                       Edit
                     </Link>
                     <CopyEditLinkButton quizId={q._id} editToken={q.editToken} />
 
-                    {q.lastGameId && (
-                      <Link to={`/host/${q.lastGameId}`} className="btn-ghost text-xs">
-                        {q.lastGameStatus === "finished"
-                          ? "View (finished)"
-                          : `Resume (${q.lastGameStatus})`}
-                      </Link>
-                    )}
-
-                    <div className="flex items-center gap-2">
-                      <button
-                        className="btn-sun"
-                        disabled={!canStart || startBusyId === q._id}
-                        onClick={() => handleStartGame(q._id)}
-                      >
-                        {startBusyId === q._id ? (
-                          <LoaderCircle className="h-4 w-4 animate-spin" />
-                        ) : (
-                          "Start live game"
-                        )}
-                      </button>
-                      {reason && (
-                        <span className="text-xs text-white/45">{reason}</span>
-                      )}
+                    <div className="ml-auto flex items-center gap-2">
+                      {reason && <span className="text-xs text-white/45">{reason}</span>}
+                      <ConfirmButton
+                        busy={quizBusyId === q._id}
+                        onConfirm={() => handleQuizRemove(q._id)}
+                      />
                     </div>
-
-                    <ConfirmButton
-                      busy={quizBusyId === q._id}
-                      onConfirm={() => handleQuizRemove(q._id)}
-                    />
                   </div>
                 </div>
               );
