@@ -143,6 +143,52 @@ export const ensureEditToken = mutation({
   },
 });
 
+/**
+ * Makes one quiz playable again: discards every game played against it, and with
+ * them the players, answers and frozen results, while keeping the quiz and its
+ * questions. The other quizzes in the tournament, and their results, are
+ * untouched — this is the single-round counterpart to resetting a tournament.
+ *
+ * Teams are never involved: they belong to the tournament, not the quiz.
+ */
+export const reset = mutation({
+  args: { quizId: v.id("quizzes") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const quiz = await ctx.db.get(args.quizId);
+    if (!quiz) throw new ConvexError("Quiz not found");
+
+    const games = await ctx.db
+      .query("games")
+      .withIndex("by_quiz", (q) => q.eq("quizId", args.quizId))
+      .collect();
+    for (const game of games) await lib.deleteGameCascade(ctx, game._id);
+
+    // A tournament is only "complete" because its final quiz was played. If that
+    // is the quiz being reset, the tournament is in progress again.
+    const tournament = await ctx.db.get(quiz.tournamentId);
+    if (tournament && tournament.completedAt !== undefined) {
+      const siblings = await ctx.db
+        .query("quizzes")
+        .withIndex("by_tournament", (q) => q.eq("tournamentId", quiz.tournamentId))
+        .collect();
+      const final = siblings.find((s) => s.isFinal);
+      let stillComplete = false;
+      if (final) {
+        const finalGames = await ctx.db
+          .query("games")
+          .withIndex("by_quiz", (q) => q.eq("quizId", final._id))
+          .collect();
+        stillComplete = finalGames.some((g) => g.status === "finished");
+      }
+      if (!stillComplete) {
+        await ctx.db.patch(quiz.tournamentId, { completedAt: undefined });
+      }
+    }
+    return null;
+  },
+});
+
 export const remove = mutation({
   args: { quizId: v.id("quizzes") },
   returns: v.null(),

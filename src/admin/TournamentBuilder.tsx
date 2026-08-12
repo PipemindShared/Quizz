@@ -11,6 +11,7 @@ import {
   Pencil,
   Play,
   Plus,
+  RotateCcw,
   Trash2,
   X,
 } from "lucide-react";
@@ -33,13 +34,20 @@ function ConfirmButton({
   busy,
   label = "Delete",
   className = "btn-ghost text-siren",
+  icon = Trash2,
+  confirmLabel = "Yes",
+  confirmClassName = "btn-ghost text-siren px-3 py-1.5",
 }: {
   onConfirm: () => void;
   busy?: boolean;
   label?: string;
   className?: string;
+  icon?: typeof Trash2;
+  confirmLabel?: string;
+  confirmClassName?: string;
 }) {
   const [armed, setArmed] = useState(false);
+  const Icon = icon;
   if (busy) {
     return (
       <button className={className} disabled>
@@ -50,7 +58,7 @@ function ConfirmButton({
   if (!armed) {
     return (
       <button className={className} onClick={() => setArmed(true)}>
-        <Trash2 className="h-4 w-4" />
+        <Icon className="h-4 w-4" />
         {label}
       </button>
     );
@@ -59,13 +67,13 @@ function ConfirmButton({
     <span className="inline-flex items-center gap-2">
       <span className="text-xs text-white/60">Sure?</span>
       <button
-        className="btn-ghost text-siren px-3 py-1.5"
+        className={confirmClassName}
         onClick={() => {
           setArmed(false);
           onConfirm();
         }}
       >
-        Yes
+        {confirmLabel}
       </button>
       <button className="btn-ghost px-3 py-1.5" onClick={() => setArmed(false)}>
         No
@@ -325,6 +333,7 @@ export default function TournamentBuilder() {
   const createQuiz = useMutation(api.quizzes.create);
   const updateQuiz = useMutation(api.quizzes.update);
   const removeQuiz = useMutation(api.quizzes.remove);
+  const resetQuiz = useMutation(api.quizzes.reset);
   const createGame = useMutation(api.games.create);
   const navigate = useNavigate();
 
@@ -417,6 +426,18 @@ export default function TournamentBuilder() {
       setError(errMsg(e));
     } finally {
       setAddTeamBusy(false);
+    }
+  }
+
+  async function handleQuizReset(quizId: Id<"quizzes">) {
+    setError(null);
+    setQuizBusyId(quizId);
+    try {
+      await resetQuiz({ quizId });
+    } catch (e) {
+      setError(errMsg(e));
+    } finally {
+      setQuizBusyId(null);
     }
   }
 
@@ -740,8 +761,21 @@ export default function TournamentBuilder() {
                     </Link>
                     <CopyEditLinkButton quizId={q._id} editToken={q.editToken} />
 
-                    <div className="ml-auto flex items-center gap-2">
+                    <div className="ml-auto flex flex-wrap items-center gap-2">
                       {reason && <span className="text-xs text-white/45">{reason}</span>}
+                      {/* Only offered when a game exists to clear, so the row
+                          doesn't carry a button that would do nothing. */}
+                      {q.lastGameId && (
+                        <ConfirmButton
+                          busy={quizBusyId === q._id}
+                          onConfirm={() => handleQuizReset(q._id)}
+                          label="Reset"
+                          icon={RotateCcw}
+                          className="btn-ghost text-sun"
+                          confirmLabel="Reset"
+                          confirmClassName="btn-ghost text-sun px-3 py-1.5"
+                        />
+                      )}
                       <ConfirmButton
                         busy={quizBusyId === q._id}
                         onConfirm={() => handleQuizRemove(q._id)}
