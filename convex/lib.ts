@@ -376,6 +376,13 @@ export async function bestPlayerForQuestion(
 /* ------------------------------------------------------------------ */
 
 /**
+ * How long a question is protected from being forced shut after it opens.
+ * Long enough to absorb a double activation, short enough that a host who
+ * genuinely wants to move on immediately barely notices.
+ */
+export const MIN_QUESTION_OPEN_MS = 1200;
+
+/**
  * Closes the current question (question -> reveal). Idempotent: a no-op if
  * the game isn't currently on `question`, or (when `expectedIndex` is given)
  * if the game has already moved past that question — this lets the
@@ -392,6 +399,19 @@ export async function closeQuestion(
   const game = await ctx.db.get(gameId);
   if (!game || game.status !== "question") return;
   if (opts.expectedIndex !== undefined && game.currentIndex !== opts.expectedIndex) return;
+
+  // A question that has only just opened cannot be forced shut. Two host
+  // activations in quick succession — a held Space key repeating, a double-click
+  // on Next, or two "advance" calls racing — otherwise advance *into* a question
+  // and immediately close it, skipping it with nobody able to answer. This
+  // happened in a live game: one question recorded zero answers while every
+  // other drew 26-33 from the same 36 players.
+  //
+  // Only the forced path is guarded. Closing because everyone has answered must
+  // stay instant, however fast that is.
+  if (opts.force && game.questionStartedAt !== undefined) {
+    if (Date.now() - game.questionStartedAt < MIN_QUESTION_OPEN_MS) return;
+  }
 
   if (!opts.force) {
     const questions = await loadOrderedQuestions(ctx, game.quizId);

@@ -24,6 +24,12 @@ const PHASE_LABEL: Record<GameStatus, string> = {
   finished: "Finished",
 };
 
+/**
+ * Minimum gap between host activations. Absorbs a double-click or a click that
+ * lands on top of a key press.
+ */
+const ACTION_COOLDOWN_MS = 700;
+
 /** Centered, on-brand placeholder used for loading / not-found / defensive fallback states. */
 function CenterMessage({
   icon,
@@ -80,8 +86,19 @@ export default function HostScreen() {
   const status = state?.game.status;
   const playerCount = state?.playerCount ?? 0;
 
+  /**
+   * Two activations in quick succession used to chain into each other: the first
+   * advanced into the next question, the second force-closed it, so the question
+   * was skipped with nobody able to answer. The server refuses to close a
+   * just-opened question too — this stops the second press being sent at all.
+   */
+  const lastActionAt = useRef(0);
+
   const primaryAction = useCallback(() => {
     if (!id || !status) return;
+    const now = Date.now();
+    if (now - lastActionAt.current < ACTION_COOLDOWN_MS) return;
+    lastActionAt.current = now;
     if (status === "lobby") {
       if (playerCount < 1) return;
       void start({ gameId: id });
@@ -99,6 +116,9 @@ export default function HostScreen() {
       if (status === "finished" || !status) return;
       // The QR overlay owns the keyboard while it is up.
       if (qrOpen) return;
+      // Holding the key fires keydown ~30 times a second. Unguarded, the first
+      // event opens the next question and the repeats force it straight shut.
+      if (e.repeat) return;
       if (e.key === " " || e.key === "ArrowRight") {
         e.preventDefault();
         primaryAction();
