@@ -166,6 +166,40 @@ export type PresenceBonusConfig = {
 };
 
 /**
+ * Discounts a team's excused members before the bonus is worked out, so nobody
+ * is judged on people who were never expected.
+ *
+ * The two modes need different treatment, and getting it wrong makes the feature
+ * silently useless in one of them:
+ *  - percent: the roster is the denominator, so shrinking it is enough. The
+ *    thresholds are proportions and stay as they are.
+ *  - count: the thresholds are absolute headcounts, so they have to come down
+ *    too, otherwise excusing somebody changes nothing at all. The minimum keeps
+ *    a floor of 1 so a fully-excused team can't collect the bonus for nobody
+ *    turning up.
+ */
+export function effectiveBonusTarget(
+  config: PresenceBonusConfig,
+  rosterSize: number,
+  excusedCount: number,
+): { config: PresenceBonusConfig; rosterSize: number } {
+  const excused = Math.max(0, Math.min(excusedCount, rosterSize));
+  const roster = Math.max(0, rosterSize - excused);
+  if (excused === 0 || config.mode === "percent") {
+    return { config, rosterSize: roster };
+  }
+  const minAttendance = Math.max(1, config.minAttendance - excused);
+  return {
+    config: {
+      ...config,
+      minAttendance,
+      maxAttendance: Math.max(minAttendance, config.maxAttendance - excused),
+    },
+    rosterSize: roster,
+  };
+}
+
+/**
  * A team's attendance in whichever unit the tournament is configured for: a
  * percentage of its roster, or a headcount. A roster of zero has no meaningful
  * percentage, so it reads as 0 rather than dividing by zero.
@@ -183,21 +217,26 @@ export function attendanceValue(
  * How much bonus the current turnout has earned, in percent. Ramps linearly
  * from 0 at minAttendance to maxBonusPercent at maxAttendance. Rounded to one
  * decimal so the lobby's climbing number doesn't jitter.
+ *
+ * `excusedCount` is the number of roster members excused from this quiz who did
+ * not turn up anyway.
  */
 export function presenceBonusPercent(
   config: PresenceBonusConfig,
   playersJoined: number,
   rosterSize: number,
+  excusedCount = 0,
 ): number {
-  const attendance = attendanceValue(config.mode, playersJoined, rosterSize);
-  if (attendance < config.minAttendance) return 0;
-  if (attendance >= config.maxAttendance) return config.maxBonusPercent;
-  const span = config.maxAttendance - config.minAttendance;
+  const eff = effectiveBonusTarget(config, rosterSize, excusedCount);
+  const attendance = attendanceValue(eff.config.mode, playersJoined, eff.rosterSize);
+  if (attendance < eff.config.minAttendance) return 0;
+  if (attendance >= eff.config.maxAttendance) return eff.config.maxBonusPercent;
+  const span = eff.config.maxAttendance - eff.config.minAttendance;
   // A zero-width band means the minimum is also the maximum: reaching it pays
   // in full rather than dividing by zero.
-  if (span <= 0) return config.maxBonusPercent;
+  if (span <= 0) return eff.config.maxBonusPercent;
   const earned =
-    (config.maxBonusPercent * (attendance - config.minAttendance)) / span;
+    (eff.config.maxBonusPercent * (attendance - eff.config.minAttendance)) / span;
   return Math.round(earned * 10) / 10;
 }
 
@@ -216,11 +255,13 @@ export function playersNeededForBonus(
   config: PresenceBonusConfig,
   playersJoined: number,
   rosterSize: number,
+  excusedCount = 0,
 ): number {
+  const eff = effectiveBonusTarget(config, rosterSize, excusedCount);
   const needed =
-    config.mode === "count"
-      ? config.minAttendance
-      : Math.ceil((rosterSize * config.minAttendance) / 100);
+    eff.config.mode === "count"
+      ? eff.config.minAttendance
+      : Math.ceil((eff.rosterSize * eff.config.minAttendance) / 100);
   return Math.max(0, Math.ceil(needed - playersJoined));
 }
 
@@ -468,6 +509,13 @@ export async function deleteGameCascade(ctx: MutationCtx, gameId: Id<"games">): 
 }
 
 export async function deleteQuizCascade(ctx: MutationCtx, quizId: Id<"quizzes">): Promise<void> {
+  // Excusals are scoped to the quiz, so they go with it.
+  const excusals = await ctx.db
+    .query("excusals")
+    .withIndex("by_quiz", (q) => q.eq("quizId", quizId))
+    .collect();
+  for (const e of excusals) await ctx.db.delete(e._id);
+
   const questions = await ctx.db
     .query("questions")
     .withIndex("by_quiz", (q) => q.eq("quizId", quizId))
@@ -516,6 +564,16 @@ export async function deleteTeamCascade(ctx: MutationCtx, team: Doc<"teams">): P
     .collect();
   for (const r of results) {
     if (r.teamId === team._id) await ctx.db.delete(r._id);
+  }
+
+  // A deleted team's excusals would otherwise linger, pointing at a team that
+  // no longer exists.
+  for (const quiz of quizzes) {
+    const excusals = await ctx.db
+      .query("excusals")
+      .withIndex("by_quiz_team", (q) => q.eq("quizId", quiz._id).eq("teamId", team._id))
+      .collect();
+    for (const e of excusals) await ctx.db.delete(e._id);
   }
 
   await ctx.db.delete(team._id);

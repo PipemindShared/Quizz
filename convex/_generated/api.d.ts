@@ -9,6 +9,7 @@
  */
 
 import type * as auth from "../auth.js";
+import type * as excusals from "../excusals.js";
 import type * as files from "../files.js";
 import type * as games from "../games.js";
 import type * as lib from "../lib.js";
@@ -27,6 +28,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
+  excusals: typeof excusals;
   files: typeof files;
   games: typeof games;
   lib: typeof lib;

@@ -21,6 +21,7 @@ import type { Doc, Id } from "../../convex/_generated/dataModel";
 import Backdrop from "../components/Backdrop";
 import { ANSWER_KIND_LABEL, DIFFICULTY, formatScore, maxQuestionPoints } from "../lib/utils";
 import FinalQuizWarning from "./FinalQuizWarning";
+import QuizAvailability from "./QuizAvailability";
 import QuestionEditor from "./QuestionEditor";
 
 function errMsg(e: unknown): string {
@@ -398,6 +399,8 @@ export default function QuizBuilder() {
             <TestLinkControls quizId={quizId} />
           </div>
         </div>
+
+        <QuizAvailability quizId={quizId} tournamentId={quiz.tournamentId} />
 
         {error && (
           <div className="glass-soft mb-4 flex items-center justify-between gap-3 border-siren/40 px-4 py-3 text-sm text-siren">

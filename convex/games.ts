@@ -5,6 +5,7 @@ import type { Doc, Id } from "./_generated/dataModel";
 import { internal } from "./_generated/api";
 import { gameStatus } from "./schema";
 import * as lib from "./lib";
+import { effectiveExcusedCount } from "./excusals";
 
 type GameStatus = Infer<typeof gameStatus>;
 type Dot = { teamId: Id<"teams">; teamColor: string; elapsedMs: number };
@@ -54,9 +55,26 @@ async function enterRoundResults(ctx: MutationCtx, game: Doc<"games">): Promise<
       team._id,
     );
     // Turnout is judged on who joined this game, against the roster as it
-    // stands now.
+    // stands now, minus anyone excused from this quiz who didn't turn up.
+    const teamPlayers = await ctx.db
+      .query("players")
+      .withIndex("by_game_team", (q) =>
+        q.eq("gameId", game._id).eq("teamId", team._id),
+      )
+      .collect();
+    const excusedCount = await effectiveExcusedCount(
+      ctx,
+      game.quizId,
+      team._id,
+      teamPlayers.map((p) => p.name),
+    );
     const bonusPercent = bonusConfig
-      ? lib.presenceBonusPercent(bonusConfig, playerCount, team.members.length)
+      ? lib.presenceBonusPercent(
+          bonusConfig,
+          playerCount,
+          team.members.length,
+          excusedCount,
+        )
       : 0;
     await ctx.db.insert("gameResults", {
       gameId: game._id,
@@ -214,13 +232,22 @@ export const getHostState = query({
 
     const bonusConfig = tournament.presenceBonus;
 
-    const teams = teamDocs.map((t) => {
+    const teams = await Promise.all(
+      teamDocs.map(async (t) => {
       // Newest joiner first: the lobby only has room to show a handful, and the
       // useful ones are the people who just scanned and are looking for their
       // own name on the screen.
       const ps = [...(playersByTeam.get(t._id) ?? [])].sort(
         (a, b) => b.joinedAt - a.joinedAt,
       );
+      // Anyone excused from this quiz who hasn't turned up is left out of the
+      // target, so the bonus the lobby shows is the one that will be paid.
+      const excusedCount = bonusConfig
+        ? await effectiveExcusedCount(ctx, game.quizId, t._id, ps.map((p) => p.name))
+        : 0;
+      const effective = bonusConfig
+        ? lib.effectiveBonusTarget(bonusConfig, t.members.length, excusedCount)
+        : null;
       return {
         _id: t._id,
         name: t.name,
@@ -229,8 +256,10 @@ export const getHostState = query({
         members: t.members,
         playerCount: ps.length,
         playerNames: ps.map((p) => p.name),
-        /** Names on the roster — the denominator for percentage attendance. */
-        roster: t.members.length,
+        /** Roster size after excusals — the denominator attendance is measured against. */
+        roster: effective ? effective.rosterSize : t.members.length,
+        /** Excused and absent; shown so a shrunken target is explained, not mysterious. */
+        excusedCount,
         /**
          * Live attendance bonus, so the lobby can show it climbing while people
          * join — the whole point being that a team can see what it's still
@@ -243,21 +272,28 @@ export const getHostState = query({
                 bonusConfig,
                 ps.length,
                 t.members.length,
+                excusedCount,
               ),
               attendance:
                 Math.round(
-                  lib.attendanceValue(bonusConfig.mode, ps.length, t.members.length) * 10,
+                  lib.attendanceValue(
+                    bonusConfig.mode,
+                    ps.length,
+                    effective!.rosterSize,
+                  ) * 10,
                 ) / 10,
               /** Extra players needed before any bonus is earned; 0 once it is. */
               playersToMin: lib.playersNeededForBonus(
                 bonusConfig,
                 ps.length,
                 t.members.length,
+                excusedCount,
               ),
             }
           : null,
       };
-    });
+      }),
+    );
 
     const currentQuestion = game.currentIndex >= 0 ? questions[game.currentIndex] : undefined;
 

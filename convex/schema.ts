@@ -186,6 +186,23 @@ export default defineSchema({
     .index("by_player_question", ["playerId", "questionId"])
     .index("by_game_player", ["gameId", "playerId"]),
 
+  /**
+   * A roster member excused from one quiz — on holiday, on shift, whatever.
+   * Being excused only removes them from the attendance bonus for that quiz; it
+   * doesn't stop them playing, and if they turn up anyway they count as present
+   * and the excusal is ignored.
+   *
+   * Keyed by name because a team's roster is a list of names, not documents.
+   * Scoped to a quiz, since availability is per round.
+   */
+  excusals: defineTable({
+    quizId: v.id("quizzes"),
+    teamId: v.id("teams"),
+    name: v.string(),
+  })
+    .index("by_quiz", ["quizId"])
+    .index("by_quiz_team", ["quizId", "teamId"]),
+
   /** Frozen per-team result for one played quiz. Written when the game ends. */
   gameResults: defineTable({
     gameId: v.id("games"),
