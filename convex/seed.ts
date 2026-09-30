@@ -129,6 +129,8 @@ export const wipe = mutation({
       "answers",
       "players",
       "gameResults",
+      "quizStats",
+      "tournamentRecaps",
       "games",
       "questions",
       "quizzes",

@@ -4,7 +4,7 @@ import { Trophy, Crown, Medal, Star } from "lucide-react";
 import type { HostState } from "./types";
 import TeamBadge from "../components/TeamBadge";
 import { cn, formatScore, ordinal } from "../lib/utils";
-import { sideCannons, rain } from "../lib/celebrate";
+import { burst, sideCannons, rain } from "../lib/celebrate";
 
 export type HostLeaderboardProps = {
   standings: NonNullable<HostState["standings"]>;
@@ -186,6 +186,15 @@ export default function HostLeaderboard({ standings, isFinal, status }: HostLead
   const champion = standings[0];
 
   useEffect(() => {
+    if (isFinal && champion && status === "leaderboard") {
+      // The payoff of the whole Awards Night countdown: a burst the moment the
+      // name lands, cannons from both sides, then a long rain of their colours.
+      const colors = [champion.color, "#ffc94d", "#ffffff"];
+      burst(colors);
+      sideCannons(colors);
+      const t = setTimeout(() => rain(colors), 2400);
+      return () => clearTimeout(t);
+    }
     if (isFinal && champion) {
       sideCannons([champion.color]);
     } else {

@@ -5,12 +5,14 @@
 // elapsedMs, roundScore deltas) — the player contract deliberately omits them.
 
 import type { Id } from "../../convex/_generated/dataModel";
+import type { RecapPlayerLine, RecapSlide } from "../../convex/recap";
 
 export type GameStatus =
   | "lobby"
   | "question"
   | "reveal"
   | "round_results"
+  | "recap"
   | "leaderboard"
   | "finished";
 
@@ -129,6 +131,20 @@ export type PlayState = {
   reveal: Reveal | null;
   roundScores: RoundScore[] | null;
   standings: Standing[] | null;
+  /** only when status === "recap" */
+  finale: PlayFinale | null;
+};
+
+export type PlayFinale = {
+  step: number;
+  stepCount: number;
+  totalPlayers: number;
+  /** this player's tournament; null if they never answered anything */
+  mine: RecapPlayerLine | null;
+  slide: { kind: RecapSlide["kind"]; title: string | null; iWon: boolean };
+  /** set once the countdown has revealed this player's team */
+  myTeamRank: number | null;
+  teamCount: number;
 };
 
 // join: mutation({ code, teamId, name }) => { playerId: Id<"players"> }

@@ -4,6 +4,7 @@ import type { MutationCtx, QueryCtx } from "./_generated/server";
 import type { Doc } from "./_generated/dataModel";
 import { gameStatus } from "./schema";
 import * as lib from "./lib";
+import * as recap from "./recap";
 
 type GameStatus = Infer<typeof gameStatus>;
 
@@ -185,6 +186,49 @@ export const getPlayState = query({
       }));
     }
 
+    // The phone's side of the awards slideshow: this player's own tournament,
+    // plus enough about the slide on the big screen to celebrate with them.
+    let finale = null;
+    if (game.status === "recap") {
+      const r = await recap.loadRecap(ctx, game._id);
+      if (r) {
+        const step = game.recapStep ?? 0;
+        const key = me ? recap.playerKey(me.teamId, me.name) : null;
+        const slide = recap.slideForPhone(r, step);
+        const myTeamStanding =
+          me && slide.revealedTeamIds.includes(me.teamId)
+            ? (r.standings.find((st) => st.team.teamId === me!.teamId) ?? null)
+            : null;
+        // Only awards the big screen has already announced — the phone must
+        // never spoil one that is still coming. The current slide's award is
+        // left to the phone, which holds it back until the big screen's pause.
+        const announced = new Set(
+          r.slides
+            .slice(0, step)
+            .flatMap((sl) =>
+              sl.kind === "award" ? [sl.title] : sl.kind === "iron" ? ["Iron Player"] : [],
+            ),
+        );
+        const line = key ? r.players.find((p) => p.key === key) : undefined;
+        const mineSoFar = line
+          ? { ...line, awards: line.awards.filter((a) => announced.has(a)) }
+          : null;
+        finale = {
+          step,
+          stepCount: r.slides.length,
+          totalPlayers: r.players.length,
+          mine: mineSoFar,
+          slide: {
+            kind: slide.kind,
+            title: slide.title,
+            iWon: key !== null && slide.winnerKeys.includes(key),
+          },
+          myTeamRank: myTeamStanding?.rank ?? null,
+          teamCount: r.standings.length,
+        };
+      }
+    }
+
     return {
       game: {
         _id: game._id,
@@ -228,6 +272,7 @@ export const getPlayState = query({
       reveal,
       roundScores,
       standings,
+      finale,
     };
   },
 });

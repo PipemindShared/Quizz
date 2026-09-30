@@ -505,6 +505,18 @@ export async function deleteGameCascade(ctx: MutationCtx, gameId: Id<"games">): 
     .collect();
   for (const r of results) await ctx.db.delete(r._id);
 
+  // The frozen statistics describe this game's answers, so they go with it.
+  const stats = await ctx.db
+    .query("quizStats")
+    .withIndex("by_game", (q) => q.eq("gameId", gameId))
+    .collect();
+  for (const s of stats) await ctx.db.delete(s._id);
+  const recaps = await ctx.db
+    .query("tournamentRecaps")
+    .withIndex("by_game", (q) => q.eq("gameId", gameId))
+    .collect();
+  for (const r of recaps) await ctx.db.delete(r._id);
+
   await ctx.db.delete(gameId);
 }
 

@@ -2,12 +2,14 @@
 // Kept independent of convex/_generated codegen so the host UI can be built and
 // typechecked while the backend is still being written in parallel.
 import type { Id } from "../../convex/_generated/dataModel";
+import type { RecapSlide, RecapStanding } from "../../convex/recap";
 
 export type GameStatus =
   | "lobby"
   | "question"
   | "reveal"
   | "round_results"
+  | "recap"
   | "leaderboard"
   | "finished";
 
@@ -149,4 +151,14 @@ export type HostState = {
   roundScores: HostRoundScore[] | null;
   /** only when status === "leaderboard" | "finished" */
   standings: HostStanding[] | null;
+  /** final quiz only, from round_results onwards: the awards slideshow */
+  finale: HostFinale | null;
+};
+
+export type HostFinale = {
+  /** current slide while status === "recap"; -1 before it starts */
+  step: number;
+  tournamentName: string;
+  slides: RecapSlide[];
+  standings: RecapStanding[];
 };

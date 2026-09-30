@@ -16,6 +16,7 @@ import type * as lib from "../lib.js";
 import type * as play from "../play.js";
 import type * as questions from "../questions.js";
 import type * as quizzes from "../quizzes.js";
+import type * as recap from "../recap.js";
 import type * as seed from "../seed.js";
 import type * as teams from "../teams.js";
 import type * as tournaments from "../tournaments.js";
@@ -35,6 +36,7 @@ declare const fullApi: ApiFromModules<{
   play: typeof play;
   questions: typeof questions;
   quizzes: typeof quizzes;
+  recap: typeof recap;
   seed: typeof seed;
   teams: typeof teams;
   tournaments: typeof tournaments;

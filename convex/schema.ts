@@ -27,6 +27,8 @@ export const choice = v.object({
  *  question      -> question is open, timer running
  *  reveal        -> per-question results + best player
  *  round_results -> team totals for this quiz
+ *  recap         -> final quiz only: the tournament awards slideshow, one
+ *                   slide per `recapStep`, ending in the countdown to the champion
  *  leaderboard   -> cumulative championship standings
  *  finished      -> archived (tournament champion shown when quiz.isFinal)
  */
@@ -35,6 +37,7 @@ export const gameStatus = v.union(
   v.literal("question"),
   v.literal("reveal"),
   v.literal("round_results"),
+  v.literal("recap"),
   v.literal("leaderboard"),
   v.literal("finished"),
 );
@@ -146,6 +149,8 @@ export default defineSchema({
     phaseStartedAt: v.number(),
     startedAt: v.optional(v.number()),
     endedAt: v.optional(v.number()),
+    /** index into the recap's slides while status is "recap" */
+    recapStep: v.optional(v.number()),
   })
     .index("by_code", ["code"])
     .index("by_quiz", ["quizId"]),
@@ -225,4 +230,29 @@ export default defineSchema({
   })
     .index("by_tournament", ["tournamentId"])
     .index("by_game", ["gameId"]),
+
+  /**
+   * Per-game statistics snapshot, written alongside gameResults when a quiz
+   * reaches its results. The final's recap is assembled from these, so the
+   * awards are ready the moment the last question closes instead of being
+   * recomputed from every answer of the tournament. Shape: `QuizStats` in
+   * convex/recap.ts — stored as a frozen blob, never queried by field.
+   */
+  quizStats: defineTable({
+    gameId: v.id("games"),
+    tournamentId: v.id("tournaments"),
+    data: v.any(),
+  })
+    .index("by_game", ["gameId"])
+    .index("by_tournament", ["tournamentId"]),
+
+  /**
+   * The tournament awards slideshow for one final game, frozen when the final
+   * reaches its results. Shape: `TournamentRecap` in convex/recap.ts.
+   */
+  tournamentRecaps: defineTable({
+    gameId: v.id("games"),
+    tournamentId: v.id("tournaments"),
+    data: v.any(),
+  }).index("by_game", ["gameId"]),
 });

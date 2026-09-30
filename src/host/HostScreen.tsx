@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useMutation, useQuery } from "convex/react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { LoaderCircle, TriangleAlert, Users, Sparkles } from "lucide-react";
+import { LoaderCircle, TriangleAlert, Users, Sparkles, FastForward } from "lucide-react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import type { GameStatus } from "./types";
@@ -14,12 +14,14 @@ import HostQuestion from "./HostQuestion";
 import HostReveal from "./HostReveal";
 import HostRoundResults from "./HostRoundResults";
 import HostLeaderboard from "./HostLeaderboard";
+import HostRecap, { RecapWarmup } from "./recap/HostRecap";
 
 const PHASE_LABEL: Record<GameStatus, string> = {
   lobby: "Lobby",
   question: "Question",
   reveal: "Reveal",
   round_results: "Round Results",
+  recap: "Awards Night",
   leaderboard: "Leaderboard",
   finished: "Finished",
 };
@@ -59,6 +61,8 @@ export default function HostScreen() {
   const start = useMutation(api.games.start);
   const closeQuestion = useMutation(api.games.closeQuestion);
   const advance = useMutation(api.games.advance);
+  const recapBack = useMutation(api.games.recapBack);
+  const skipRecap = useMutation(api.games.skipRecap);
 
   const reducedMotion = useReducedMotion();
 
@@ -104,7 +108,12 @@ export default function HostScreen() {
       void start({ gameId: id });
     } else if (status === "question") {
       void closeQuestion({ gameId: id, force: true });
-    } else if (status === "reveal" || status === "round_results" || status === "leaderboard") {
+    } else if (
+      status === "reveal" ||
+      status === "round_results" ||
+      status === "recap" ||
+      status === "leaderboard"
+    ) {
       void advance({ gameId: id });
     }
     // "finished": no-op
@@ -122,11 +131,14 @@ export default function HostScreen() {
       if (e.key === " " || e.key === "ArrowRight") {
         e.preventDefault();
         primaryAction();
+      } else if (e.key === "ArrowLeft" && status === "recap" && id) {
+        e.preventDefault();
+        void recapBack({ gameId: id });
       }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [status, primaryAction, qrOpen]);
+  }, [status, primaryAction, qrOpen, id, recapBack]);
 
   // ---- No gameId in the route at all ----
   if (!id) {
@@ -169,18 +181,28 @@ export default function HostScreen() {
     );
   }
 
+  const recapSlide =
+    state.game.status === "recap" && state.finale
+      ? state.finale.slides[state.finale.step]
+      : undefined;
   const tint = state.standings?.length
     ? [state.standings[0]!.color]
     : state.reveal?.bestPlayer
       ? [state.reveal.bestPlayer.teamColor]
-      : undefined;
+      : // Never the winner's colour: the backdrop would name the team before
+        // the award slide has finished its "and the award goes to…" pause.
+        recapSlide
+        ? ["#ffc94d", "#ff4d8d", "#7c5cff"]
+        : undefined;
 
   const phaseKey = `${state.game.status}-${state.game.currentIndex}`;
 
   const phaseLabel =
     state.game.status === "question" || state.game.status === "reveal"
       ? `Question ${state.game.currentIndex + 1} of ${state.quiz.questionCount}`
-      : PHASE_LABEL[state.game.status];
+      : state.game.status === "recap" && state.finale
+        ? `Awards Night · ${state.finale.step + 1} / ${state.finale.slides.length}`
+        : PHASE_LABEL[state.game.status];
 
   const fallback = (
     <motion.div
@@ -251,6 +273,9 @@ export default function HostScreen() {
         fallback
       );
       break;
+    case "recap":
+      content = state.finale ? <HostRecap key={phaseKey} finale={state.finale} /> : fallback;
+      break;
     case "leaderboard":
       content = state.standings ? (
         <FitToScreen key={phaseKey}>
@@ -281,6 +306,10 @@ export default function HostScreen() {
       content = fallback;
   }
 
+  const lastRecapSlide =
+    state.game.status === "recap" &&
+    !!state.finale &&
+    state.finale.step >= state.finale.slides.length - 1;
   const primaryLabel =
     state.game.status === "lobby"
       ? "Start"
@@ -288,7 +317,11 @@ export default function HostScreen() {
         ? "Reveal now"
         : state.game.status === "finished"
           ? null
-          : "Next";
+          : lastRecapSlide
+            ? "Reveal the champions"
+            : state.game.status === "round_results" && state.finale
+              ? "Awards Night"
+              : "Next";
 
   const primaryDisabled = state.game.status === "lobby" && state.playerCount < 1;
 
@@ -297,6 +330,7 @@ export default function HostScreen() {
       <Backdrop variant="host" tint={tint} />
 
       <AnimatePresence mode="wait">{content}</AnimatePresence>
+      {state.finale ? <RecapWarmup finale={state.finale} /> : null}
 
       {/* Host control bar */}
       <motion.div
@@ -327,6 +361,17 @@ export default function HostScreen() {
 
         <div className="flex shrink-0 items-center gap-3">
           <JoinQrPopover code={state.game.code} onOpenChange={setQrOpen} />
+          {state.game.status === "recap" && !lastRecapSlide ? (
+            <button
+              type="button"
+              className="btn-ghost"
+              onClick={() => void skipRecap({ gameId: id })}
+              title="Jump straight to the champion"
+            >
+              <FastForward className="h-4 w-4" />
+              <span className="hidden sm:inline">Skip to champion</span>
+            </button>
+          ) : null}
           {primaryLabel ? (
             <>
               <span className="hidden text-xs text-white/35 sm:inline">Space / →</span>

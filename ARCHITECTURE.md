@@ -100,13 +100,22 @@ lobby ──start──▶ question(0) ──time up / all answered──▶ rev
                                                             │ advance (last Q)
                                                             ▼
 finished ◀──advance── leaderboard ◀──advance── round_results
+                           ▲                          │ final quiz only
+                           └── advance (last slide) ── recap ◀┘  (one slide per advance)
 ```
 
 - `lobby` — host shows QR + live per-team join counts. Players pick team → name → wait.
 - `question` — prompt on both screens, countdown bar. Player submits once.
 - `reveal` — vote distribution, right/wrong, best player.
 - `round_results` — team totals **for this quiz**. Writing `gameResults` happens
-  on entry to this phase.
+  on entry to this phase, along with a `quizStats` snapshot of the game's
+  answers. On the final, the whole-tournament `tournamentRecaps` doc is built
+  from those snapshots in the same step (`convex/recap.ts`).
+- `recap` — final quiz only: "Awards Night", a slideshow stepped by
+  `games.recapStep` (tournament numbers, race chart, team and player awards,
+  question awards, countdown from last place). `recapBack` / `skipRecap` let the
+  host go back a slide or jump to the champion. Phones show the player's own
+  tournament card.
 - `leaderboard` — cumulative championship standings for the tournament. If
   `quiz.isFinal`, this is the tournament finale (champion celebration) and the
   tournament is marked completed.

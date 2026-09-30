@@ -17,6 +17,7 @@ import PlayerLobby from "./PlayerLobby";
 import PlayerQuestion from "./PlayerQuestion";
 import PlayerReveal from "./PlayerReveal";
 import PlayerStandings from "./PlayerStandings";
+import PlayerRecap from "./PlayerRecap";
 
 function errorMessage(err: unknown): string {
   if (err instanceof ConvexError) {
@@ -172,6 +173,13 @@ export default function PlayerApp() {
           />
         );
       }
+    } else if (status === "recap") {
+      phaseKey = "recap";
+      content = state.finale ? (
+        <PlayerRecap me={me} finale={state.finale} />
+      ) : (
+        <PlayerWaiting teamColor={me.teamColor} />
+      );
     } else {
       // status is narrowed to "round_results" | "leaderboard" | "finished" here
       phaseKey = status;

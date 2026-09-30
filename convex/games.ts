@@ -6,6 +6,7 @@ import { internal } from "./_generated/api";
 import { gameStatus } from "./schema";
 import * as lib from "./lib";
 import { effectiveExcusedCount } from "./excusals";
+import * as recap from "./recap";
 
 type GameStatus = Infer<typeof gameStatus>;
 type Dot = { teamId: Id<"teams">; teamColor: string; elapsedMs: number };
@@ -33,7 +34,11 @@ async function enterQuestion(ctx: MutationCtx, game: Doc<"games">, index: number
   await ctx.scheduler.runAt(endsAt + 750, internal.games.autoClose, { gameId: game._id, index });
 }
 
-/** reveal -> round_results: freeze this game's team scores (idempotent). */
+/**
+ * reveal -> round_results: freeze this game's team scores and statistics
+ * (idempotent). On the final this also builds the whole tournament recap, so
+ * the awards are ready before anyone clicks on to them.
+ */
 async function enterRoundResults(ctx: MutationCtx, game: Doc<"games">): Promise<void> {
   const existing = await ctx.db
     .query("gameResults")
@@ -88,7 +93,23 @@ async function enterRoundResults(ctx: MutationCtx, game: Doc<"games">): Promise<
     });
   }
 
+  const stats = await recap.writeQuizStats(ctx, game);
+  const quiz = await ctx.db.get(game.quizId);
+  if (quiz?.isFinal && stats) await recap.writeTournamentRecap(ctx, game, stats);
+
   await ctx.db.patch(game._id, { status: "round_results", phaseStartedAt: Date.now() });
+}
+
+/** -> leaderboard; on the final, that is the moment the tournament is decided. */
+async function enterLeaderboard(ctx: MutationCtx, game: Doc<"games">): Promise<void> {
+  await ctx.db.patch(game._id, { status: "leaderboard", phaseStartedAt: Date.now() });
+  const quiz = await ctx.db.get(game.quizId);
+  if (quiz?.isFinal) {
+    const tournament = await ctx.db.get(game.tournamentId);
+    if (tournament && tournament.completedAt === undefined) {
+      await ctx.db.patch(game.tournamentId, { completedAt: Date.now() });
+    }
+  }
 }
 
 export const create = mutation({
@@ -176,13 +197,27 @@ export const advance = mutation({
     }
 
     if (game.status === "round_results") {
-      await ctx.db.patch(game._id, { status: "leaderboard", phaseStartedAt: Date.now() });
       const quiz = await ctx.db.get(game.quizId);
-      if (quiz?.isFinal) {
-        const tournament = await ctx.db.get(game.tournamentId);
-        if (tournament && tournament.completedAt === undefined) {
-          await ctx.db.patch(game.tournamentId, { completedAt: Date.now() });
-        }
+      const finale = quiz?.isFinal ? await recap.loadRecap(ctx, game._id) : null;
+      if (finale && finale.slides.length > 0) {
+        await ctx.db.patch(game._id, {
+          status: "recap",
+          recapStep: 0,
+          phaseStartedAt: Date.now(),
+        });
+      } else {
+        await enterLeaderboard(ctx, game);
+      }
+      return null;
+    }
+
+    if (game.status === "recap") {
+      const finale = await recap.loadRecap(ctx, game._id);
+      const next = (game.recapStep ?? 0) + 1;
+      if (finale && next < finale.slides.length) {
+        await ctx.db.patch(game._id, { recapStep: next, phaseStartedAt: Date.now() });
+      } else {
+        await enterLeaderboard(ctx, game);
       }
       return null;
     }
@@ -197,6 +232,33 @@ export const advance = mutation({
     }
 
     return null; // lobby / finished: no-op
+  },
+});
+
+/** Host's back arrow during the recap: one slide back, never out of the recap. */
+export const recapBack = mutation({
+  args: { gameId: v.id("games") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const game = await ctx.db.get(args.gameId);
+    if (!game || game.status !== "recap") return null;
+    const step = game.recapStep ?? 0;
+    if (step > 0) {
+      await ctx.db.patch(game._id, { recapStep: step - 1, phaseStartedAt: Date.now() });
+    }
+    return null;
+  },
+});
+
+/** Short on time: jump straight from the recap to the champion. */
+export const skipRecap = mutation({
+  args: { gameId: v.id("games") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const game = await ctx.db.get(args.gameId);
+    if (!game || game.status !== "recap") return null;
+    await enterLeaderboard(ctx, game);
+    return null;
   },
 });
 
@@ -437,6 +499,21 @@ export const getHostState = query({
       }));
     }
 
+    // Sent from the final's round results onwards, so the host screen can warm
+    // up every image the slideshow needs before the first slide is shown.
+    let finale = null;
+    if (quiz.isFinal && (game.status === "round_results" || game.status === "recap")) {
+      const r = await recap.loadRecap(ctx, game._id);
+      if (r) {
+        finale = {
+          step: game.status === "recap" ? (game.recapStep ?? 0) : -1,
+          tournamentName: r.tournamentName,
+          slides: r.slides,
+          standings: r.standings,
+        };
+      }
+    }
+
     return {
       game: {
         _id: game._id,
@@ -476,6 +553,7 @@ export const getHostState = query({
       reveal,
       roundScores,
       standings,
+      finale,
     };
   },
 });
